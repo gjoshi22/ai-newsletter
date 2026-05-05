@@ -48,6 +48,9 @@ jobs:
           PORT: 5173
         run: pnpm --filter @workspace/xd-journal build
 
+      - name: Add SPA fallback
+        run: cp frontend/xd-journal/dist/public/index.html frontend/xd-journal/dist/public/404.html
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
