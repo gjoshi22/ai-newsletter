@@ -5,6 +5,7 @@ export function CustomCursor() {
   const mx = useMotionValue(-200);
   const my = useMotionValue(-200);
   const [hovered, setHovered] = useState(false);
+  const [compact, setCompact] = useState(false);
   const [pressed, setPressed] = useState(false);
   const [visible, setVisible] = useState(false);
   const visibleRef = useRef(false); // avoid re-registering listeners on visible state change
@@ -20,49 +21,37 @@ export function CustomCursor() {
   useEffect(() => {
     /* pointermove is more reliable than mousemove — fires on click-drag too */
     const move = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      const compactTarget = Boolean(target.closest("[data-cursor-compact]"));
+      const hoverTarget = Boolean(
+        target.closest("a") ||
+        target.closest("button") ||
+        target.closest(".article-card") ||
+        target.closest(".featured-card") ||
+        target.closest("[data-cursor-hover]")
+      );
+
       mx.set(e.clientX);
       my.set(e.clientY);
+      setCompact(compactTarget);
+      setHovered(!compactTarget && hoverTarget);
       if (!visibleRef.current) {
         visibleRef.current = true;
         setVisible(true);
       }
     };
 
-    /* use pointerover/pointerout for hover detection — avoids bubble noise of mouseover */
-    const over = (e: PointerEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.closest("a") ||
-        target.closest("button") ||
-        target.closest(".article-card") ||
-        target.closest(".featured-card") ||
-        target.closest("[data-cursor-hover]")
-      ) {
-        setHovered(true);
-      }
-    };
-    const out = (e: PointerEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.closest("a") ||
-        target.closest("button") ||
-        target.closest(".article-card") ||
-        target.closest(".featured-card") ||
-        target.closest("[data-cursor-hover]")
-      ) {
-        setHovered(false);
-      }
-    };
-
     /* hide cursor when pointer leaves the window */
-    const leave = () => setVisible(false);
+    const leave = () => {
+      setCompact(false);
+      setHovered(false);
+      setVisible(false);
+    };
     const enter = () => { if (visibleRef.current) setVisible(true); };
     const down = () => setPressed(true);
     const up = () => setPressed(false);
 
     window.addEventListener("pointermove", move, { passive: true });
-    window.addEventListener("pointerover", over, { passive: true });
-    window.addEventListener("pointerout", out, { passive: true });
     window.addEventListener("pointerdown", down, { passive: true });
     window.addEventListener("pointerup", up, { passive: true });
     document.documentElement.addEventListener("pointerleave", leave);
@@ -70,8 +59,6 @@ export function CustomCursor() {
 
     return () => {
       window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerover", over);
-      window.removeEventListener("pointerout", out);
       window.removeEventListener("pointerdown", down);
       window.removeEventListener("pointerup", up);
       document.documentElement.removeEventListener("pointerleave", leave);
@@ -96,8 +83,8 @@ export function CustomCursor() {
         }}
         animate={{
           opacity: visible ? 1 : 0,
-          width:  pressed ? 34 : hovered ? 48 : 22,
-          height: pressed ? 34 : hovered ? 48 : 22,
+          width:  compact ? 20 : pressed ? 34 : hovered ? 48 : 22,
+          height: compact ? 20 : pressed ? 34 : hovered ? 48 : 22,
           scale: pressed ? 0.92 : hovered ? 1.04 : 1,
         }}
         transition={{ opacity: { duration: 0.15 }, width: { duration: 0.18 }, height: { duration: 0.18 }, scale: { duration: 0.14 } }}

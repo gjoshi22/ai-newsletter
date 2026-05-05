@@ -7,7 +7,6 @@ import { HeroAsciiCanvas, type HeroAsciiLine } from "@/components/HeroAsciiCanva
 import { MascotGameLauncher } from "@/components/MascotGameLauncher";
 import { ModeGameToggle } from "@/components/ModeGameToggle";
 import { Navigation } from "@/components/Navigation";
-import { Switch } from "@/components/ui/switch";
 import { useSeenArticles } from "@/hooks/useSeenArticles";
 import { articles, type ArticleCategory, type ArticleSubCategory } from "@/lib/data";
 
@@ -107,15 +106,22 @@ export default function CollectionPage({ category }: CollectionPageProps) {
             </div>
 
             <aside className="collection-hero-console" aria-label={`${category} collection controls`}>
-              <div className="mascot-preference-control">
-                <span id="mascot-toggle-label">Mascot</span>
-                <Switch
-                  aria-labelledby="mascot-toggle-label"
-                  checked={mascotEnabled}
-                  onCheckedChange={handleMascotEnabledChange}
-                />
+              <button
+                type="button"
+                className="mascot-preference-control"
+                role="switch"
+                aria-checked={mascotEnabled}
+                aria-label={`Turn mascot ${mascotEnabled ? "off" : "on"}`}
+                data-state={mascotEnabled ? "checked" : "unchecked"}
+                data-cursor-compact
+                onClick={() => handleMascotEnabledChange(!mascotEnabled)}
+              >
+                <span>Mascot</span>
+                <span className="mascot-toggle-rail" aria-hidden="true">
+                  <span className="mascot-toggle-thumb" />
+                </span>
                 <strong>{mascotEnabled ? "On" : "Off"}</strong>
-              </div>
+              </button>
               <div className="collection-console-row">
                 <span>current lens</span>
                 <strong>{activeFilter === "Development" ? "dev" : "design"}</strong>
