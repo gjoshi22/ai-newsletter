@@ -12,6 +12,7 @@ type ModeGameToggleProps = {
 };
 
 export type SpriteRect = { x: number; y: number; w: number; h: number };
+export type WalkDirection = "up" | "down" | "left" | "right";
 type SpriteSource = HTMLImageElement | HTMLCanvasElement;
 type GameTheme = ReturnType<typeof readTheme>;
 
@@ -148,8 +149,8 @@ const MODE_COPY: Record<ArticleSubCategory, { title: string; token: string }> = 
 const LEVEL_UP_BOX: ToolLogo = { label: "LVL", full: "Level up", logo: "levelup", power: true };
 
 export const SPRITE_PATHS: Record<ArticleSubCategory, string> = {
-  Design: `${ASSET_BASE}sprites/sher_sprite.png`,
-  Development: `${ASSET_BASE}sprites/gj_dev_sprite.png`,
+  Design: `${ASSET_BASE}sprites/sher-design-sprite.png`,
+  Development: `${ASSET_BASE}sprites/gj-dev-sprite.png`,
 };
 
 const TOKEN_LOGO_PATHS: Record<string, string> = {
@@ -163,21 +164,108 @@ const TOKEN_LOGO_PATHS: Record<string, string> = {
   cursor: `${ASSET_BASE}sprites/tokens/dev/cursor.svg`,
 };
 
-export const WALK_FRAMES: SpriteRect[] = [
-  { x: 74, y: 494, w: 138, h: 283 },
-  { x: 277, y: 494, w: 139, h: 283 },
-  { x: 470, y: 494, w: 146, h: 283 },
-  { x: 672, y: 494, w: 133, h: 283 },
-  { x: 860, y: 494, w: 141, h: 283 },
-  { x: 1056, y: 494, w: 136, h: 283 },
+export const WALK_UP_FRAMES: SpriteRect[] = [
+  { x: 803, y: 55, w: 89, h: 205 },
+  { x: 923, y: 55, w: 90, h: 205 },
+  { x: 1046, y: 55, w: 89, h: 205 },
+  { x: 1169, y: 55, w: 90, h: 205 },
+  { x: 1293, y: 55, w: 89, h: 205 },
+  { x: 1410, y: 55, w: 90, h: 205 },
 ];
 
+export const WALK_DOWN_FRAMES: SpriteRect[] = [
+  { x: 30, y: 55, w: 103, h: 205 },
+  { x: 151, y: 55, w: 100, h: 205 },
+  { x: 271, y: 55, w: 97, h: 205 },
+  { x: 399, y: 55, w: 98, h: 205 },
+  { x: 523, y: 55, w: 99, h: 205 },
+  { x: 644, y: 55, w: 97, h: 205 },
+];
+
+export const WALK_LEFT_FRAMES: SpriteRect[] = [
+  { x: 35, y: 370, w: 101, h: 195 },
+  { x: 152, y: 370, w: 111, h: 195 },
+  { x: 282, y: 370, w: 106, h: 195 },
+  { x: 406, y: 370, w: 99, h: 195 },
+  { x: 529, y: 370, w: 102, h: 195 },
+];
+
+export const WALK_RIGHT_FRAMES: SpriteRect[] = [
+  { x: 872, y: 370, w: 90, h: 195 },
+  { x: 999, y: 370, w: 100, h: 195 },
+  { x: 1130, y: 370, w: 106, h: 195 },
+  { x: 1278, y: 370, w: 104, h: 195 },
+  { x: 1403, y: 370, w: 108, h: 195 },
+];
+
+export const WALK_FRAMES = WALK_RIGHT_FRAMES;
+
+export const WALK_DIRECTION_FRAMES: Record<WalkDirection, SpriteRect[]> = {
+  up: WALK_UP_FRAMES,
+  down: WALK_DOWN_FRAMES,
+  left: WALK_LEFT_FRAMES,
+  right: WALK_RIGHT_FRAMES,
+};
+
+const DEV_WALK_UP_FRAMES: SpriteRect[] = [
+  { x: 162, y: 342, w: 84, h: 177 },
+  { x: 289, y: 342, w: 82, h: 177 },
+  { x: 421, y: 342, w: 87, h: 177 },
+  { x: 568, y: 342, w: 83, h: 177 },
+];
+
+const DEV_WALK_DOWN_FRAMES: SpriteRect[] = [
+  { x: 840, y: 348, w: 86, h: 175 },
+  { x: 957, y: 348, w: 86, h: 175 },
+  { x: 1079, y: 348, w: 86, h: 175 },
+  { x: 1203, y: 348, w: 85, h: 175 },
+  { x: 1319, y: 348, w: 88, h: 175 },
+];
+
+const DEV_WALK_LEFT_FRAMES: SpriteRect[] = [
+  { x: 98, y: 570, w: 86, h: 170 },
+  { x: 233, y: 570, w: 95, h: 170 },
+  { x: 377, y: 570, w: 93, h: 170 },
+  { x: 510, y: 570, w: 96, h: 170 },
+];
+
+const DEV_WALK_RIGHT_FRAMES: SpriteRect[] = [
+  { x: 861, y: 570, w: 90, h: 170 },
+  { x: 984, y: 570, w: 93, h: 170 },
+  { x: 1098, y: 570, w: 92, h: 170 },
+  { x: 1209, y: 570, w: 94, h: 170 },
+  { x: 1316, y: 570, w: 94, h: 170 },
+];
+
+export const WALK_DIRECTION_FRAMES_BY_MODE: Record<ArticleSubCategory, Record<WalkDirection, SpriteRect[]>> = {
+  Design: WALK_DIRECTION_FRAMES,
+  Development: {
+    up: DEV_WALK_UP_FRAMES,
+    down: DEV_WALK_DOWN_FRAMES,
+    left: DEV_WALK_LEFT_FRAMES,
+    right: DEV_WALK_RIGHT_FRAMES,
+  },
+};
+
 export const POSE_FRAMES: Record<"idle" | "talk" | "happy" | "wave" | "think", SpriteRect> = {
-  idle: { x: 79, y: 819, w: 140, h: 352 },
-  talk: { x: 263, y: 819, w: 209, h: 352 },
-  happy: { x: 527, y: 819, w: 172, h: 352 },
-  wave: { x: 742, y: 819, w: 181, h: 352 },
-  think: { x: 1008, y: 819, w: 152, h: 352 },
+  idle: { x: 76, y: 704, w: 105, h: 260 },
+  talk: { x: 244, y: 704, w: 165, h: 260 },
+  happy: { x: 740, y: 704, w: 170, h: 260 },
+  wave: { x: 1000, y: 704, w: 158, h: 260 },
+  think: { x: 1300, y: 704, w: 111, h: 260 },
+};
+
+const DEV_POSE_FRAMES: typeof POSE_FRAMES = {
+  idle: { x: 140, y: 784, w: 101, h: 223 },
+  talk: { x: 335, y: 784, w: 185, h: 223 },
+  happy: { x: 640, y: 784, w: 170, h: 223 },
+  wave: { x: 914, y: 784, w: 147, h: 223 },
+  think: { x: 1212, y: 784, w: 104, h: 223 },
+};
+
+export const POSE_FRAMES_BY_MODE: Record<ArticleSubCategory, typeof POSE_FRAMES> = {
+  Design: POSE_FRAMES,
+  Development: DEV_POSE_FRAMES,
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -202,14 +290,54 @@ export function makeTransparentSprite(image: HTMLImageElement): HTMLCanvasElemen
   ctx.drawImage(image, 0, 0);
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const { data } = imageData;
+  const totalPixels = canvas.width * canvas.height;
+  const background = new Uint8Array(totalPixels);
+  const queue = new Int32Array(totalPixels);
+  let head = 0;
+  let tail = 0;
 
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    if (max - min < 18 && min > 86 && max < 236) data[i + 3] = 0;
+  const isBackgroundPixel = (pixelIndex: number) => {
+    const offset = pixelIndex * 4;
+    const alpha = data[offset + 3];
+    if (alpha < 18) return true;
+    const red = data[offset];
+    const green = data[offset + 1];
+    const blue = data[offset + 2];
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    return max - min < 18 && (min > 226 || (min > 86 && max < 236));
+  };
+
+  const enqueueBackground = (x: number, y: number) => {
+    const index = y * canvas.width + x;
+    if (background[index] || !isBackgroundPixel(index)) return;
+    background[index] = 1;
+    queue[tail] = index;
+    tail += 1;
+  };
+
+  for (let x = 0; x < canvas.width; x += 1) {
+    enqueueBackground(x, 0);
+    enqueueBackground(x, canvas.height - 1);
+  }
+  for (let y = 0; y < canvas.height; y += 1) {
+    enqueueBackground(0, y);
+    enqueueBackground(canvas.width - 1, y);
+  }
+
+  while (head < tail) {
+    const current = queue[head];
+    head += 1;
+    const x = current % canvas.width;
+    const y = Math.floor(current / canvas.width);
+    if (x > 0) enqueueBackground(x - 1, y);
+    if (x < canvas.width - 1) enqueueBackground(x + 1, y);
+    if (y > 0) enqueueBackground(x, y - 1);
+    if (y < canvas.height - 1) enqueueBackground(x, y + 1);
+  }
+
+  for (let index = 0; index < totalPixels; index += 1) {
+    if (background[index]) data[index * 4 + 3] = 0;
   }
 
   ctx.putImageData(imageData, 0, 0);
@@ -861,17 +989,19 @@ function drawBlock(ctx: CanvasRenderingContext2D, block: SolidBlock, time: numbe
 
 function pickSpriteFrame(state: GameState, time: number): SpriteRect {
   const player = state.player;
-  if (state.complete) return Math.floor(time / 220) % 2 === 0 ? POSE_FRAMES.happy : POSE_FRAMES.wave;
-  if (state.gameOver) return POSE_FRAMES.think;
-  if (!state.running) return Math.floor(time / 260) % 2 === 0 ? POSE_FRAMES.idle : POSE_FRAMES.wave;
+  const walkFrames = WALK_DIRECTION_FRAMES_BY_MODE[state.mode].right;
+  const poseFrames = POSE_FRAMES_BY_MODE[state.mode];
+  if (state.complete) return Math.floor(time / 220) % 2 === 0 ? poseFrames.happy : poseFrames.wave;
+  if (state.gameOver) return poseFrames.think;
+  if (!state.running) return Math.floor(time / 260) % 2 === 0 ? poseFrames.idle : poseFrames.wave;
   if (!player.standing) {
-    if (player.vy < -160) return WALK_FRAMES[2];
-    if (player.vy > 140) return POSE_FRAMES.talk;
-    return WALK_FRAMES[3];
+    if (player.vy < -160) return walkFrames[2];
+    if (player.vy > 140) return poseFrames.talk;
+    return walkFrames[3];
   }
-  if (Math.abs(player.vx) < 12) return POSE_FRAMES.idle;
+  if (Math.abs(player.vx) < 12) return poseFrames.idle;
   const speed = clamp(Math.abs(player.vx), 50, 260);
-  return WALK_FRAMES[Math.floor(time / (24000 / speed)) % WALK_FRAMES.length];
+  return walkFrames[Math.floor(time / (24000 / speed)) % walkFrames.length];
 }
 
 function drawHeroSprite(ctx: CanvasRenderingContext2D, sprite: SpriteSource | null, state: GameState, theme: GameTheme, time: number) {

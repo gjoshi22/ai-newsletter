@@ -117,6 +117,24 @@ export default function CollectionPage({ category }: CollectionPageProps) {
                 </span>
                 <strong>{mascotEnabled ? "On" : "Off"}</strong>
               </button>
+              <div className="collection-console-row">
+                <span>current lens</span>
+                <strong>{activeFilter === "Development" ? "dev" : "design"}</strong>
+              </div>
+              <div className="collection-lens-card" data-mode={activeFilter.toLowerCase()}>
+                <div className="collection-lens-mark">
+                  <span>{String(filtered.length).padStart(2, "0")}</span>
+                  <small>{category === "News" ? "articles" : "refs"}</small>
+                </div>
+                <div className="collection-lens-copy">
+                  <strong>{activeFilter === "Design" ? "Design reading stack" : "Dev reading stack"}</strong>
+                  <span>
+                    {category === "News"
+                      ? "Signals filtered for the selected practice lens."
+                      : "Reusable material filtered for the selected practice lens."}
+                  </span>
+                </div>
+              </div>
             </aside>
           </motion.div>
         </div>

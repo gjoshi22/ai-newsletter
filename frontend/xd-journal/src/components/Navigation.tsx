@@ -23,8 +23,8 @@ export function Navigation() {
   }, []);
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 h-11 flex items-center transition-all duration-300 ${
-      scrolled ? "bg-background/96 backdrop-blur-sm border-b border-border" : "bg-transparent border-b border-transparent"
+    <nav className={`fixed top-0 left-0 right-0 z-50 h-14 flex items-center border-b border-border transition-all duration-300 ${
+      scrolled ? "bg-background/96 backdrop-blur-sm" : "bg-background/72"
     }`}>
       <div className="w-full max-w-[1600px] mx-auto px-6 md:px-12 flex items-center justify-between">
 

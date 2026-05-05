@@ -12,7 +12,7 @@ type AsciiExperienceProps = {
 
 type DesignTint = "amber" | "vermillion" | "blue" | "sage" | "slate" | "charcoal";
 type TerminalZone = "frame" | "chrome" | "screen" | "code" | "cursor" | "data";
-type DesignStudioZone = "frame" | "chrome" | "toolbar" | "brand" | "copy" | "artboard" | "shape" | "swatch" | "panel" | "note" | "cursor" | "dust";
+type DesignStudioZone = "frame" | "chrome" | "toolbar" | "brand" | "copy" | "artboard" | "shape" | "swatch" | "panel" | "note" | "cursor" | "signal" | "dust";
 
 type Point =
   | { family: "dev-terminal"; x: number; y: number; z: number; char: string; shade: number; zone: TerminalZone; pulse: number; tint?: DesignTint }
@@ -496,6 +496,56 @@ function buildDesignStudioPoints(dense: number): Point[] {
     push(x, topBottomY, glyph("..,:+0", dot, angle), 0.08 + (dot % 7) * 0.018, "dust", 6.4, dot % 9 === 0 ? "amber" : undefined, -0.16);
   }
 
+  const signalRamp = "01<>[]/:+=#";
+  const pushSignal = (x: number, y: number, salt: number, tint?: DesignTint, size = 7.2) => {
+    push(x, y, glyph(signalRamp, i + salt, x * 0.7 + y * 1.3), 0.34 + (salt % 7) * 0.045, "signal", size, tint, -0.12);
+  };
+  const topBottomCount = Math.round(48 * dense);
+  for (let index = 0; index < topBottomCount; index += 1) {
+    const progress = topBottomCount <= 1 ? 0 : index / (topBottomCount - 1);
+    const x = STUDIO_BOUNDS.left + progress * (STUDIO_BOUNDS.right - STUDIO_BOUNDS.left);
+    const topWave = Math.sin(index * 0.9) * 0.06;
+    const bottomWave = Math.cos(index * 0.84) * 0.065;
+    if (index % 4 !== 0) {
+      pushSignal(x, STUDIO_BOUNDS.top - 0.28 - topWave, index, index % 9 === 0 ? "amber" : undefined, index % 6 === 0 ? 8.2 : 7.2);
+    }
+    if (index % 5 !== 1) {
+      pushSignal(x, STUDIO_BOUNDS.bottom + 0.28 + bottomWave, index + 101, index % 8 === 0 ? "amber" : undefined, index % 7 === 0 ? 8.2 : 7.2);
+    }
+  }
+
+  const sideCount = Math.round(26 * dense);
+  for (let index = 0; index < sideCount; index += 1) {
+    const progress = sideCount <= 1 ? 0 : index / (sideCount - 1);
+    const y = STUDIO_BOUNDS.top + progress * (STUDIO_BOUNDS.bottom - STUDIO_BOUNDS.top);
+    const leftWave = Math.cos(index * 0.76) * 0.045;
+    const rightWave = Math.sin(index * 0.82) * 0.05;
+    pushSignal(STUDIO_BOUNDS.left - 0.23 - leftWave, y, index + 211, index % 6 === 0 ? "amber" : undefined, 7);
+    if (index % 3 !== 0) {
+      pushSignal(STUDIO_BOUNDS.right + 0.23 + rightWave, y, index + 307, index % 5 === 0 ? "amber" : undefined, 7);
+    }
+  }
+
+  [
+    { x: -2.48, y: STUDIO_BOUNDS.top - 0.48, text: "[]<>01" },
+    { x: 1.42, y: STUDIO_BOUNDS.top - 0.46, text: "/::/[]" },
+    { x: -2.34, y: STUDIO_BOUNDS.bottom + 0.48, text: "01==[]" },
+    { x: 1.25, y: STUDIO_BOUNDS.bottom + 0.5, text: "<>:/01" },
+  ].forEach((cluster, clusterIndex) => {
+    Array.from(cluster.text).forEach((char, charIndex) => {
+      push(
+        cluster.x + charIndex * 0.075,
+        cluster.y + Math.sin((clusterIndex + charIndex) * 0.9) * 0.025,
+        char,
+        0.48 + (charIndex % 3) * 0.055,
+        "signal",
+        7.4,
+        charIndex % 2 === 0 ? "amber" : undefined,
+        -0.1,
+      );
+    });
+  });
+
   return points;
 }
 
@@ -635,7 +685,7 @@ function buildDesignPalettePoints(variant: AsciiExperienceVariant, dense: number
 
 function buildPoints(mode: AsciiExperienceMode, variant: AsciiExperienceVariant, surface?: ArticleCategory): Point[] {
   const points: Point[] = [];
-  const dense = variant === "collection" ? 1.72 : variant === "archive" ? 1.26 : mode === "Design" ? 0.62 : 1.08;
+  const dense = variant === "collection" ? 1.72 : variant === "archive" ? 1.26 : mode === "Design" ? 0.54 : 1.08;
   const resourceBias = variant === "collection" && surface === "Resources" ? 0.18 : 0;
 
   if (mode === "Development") {
@@ -836,6 +886,16 @@ function strokeRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, 
   roundedRectPath(ctx, x, y, width, height, radius);
   ctx.strokeStyle = strokeStyle;
   ctx.stroke();
+}
+
+function resetCanvasPaintState(ctx: CanvasRenderingContext2D) {
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = "transparent";
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.filter = "none";
 }
 
 function drawRotatedCard(ctx: CanvasRenderingContext2D, rect: { x: number; y: number; width: number; height: number }, angle: number, draw: (card: { x: number; y: number; width: number; height: number }) => void) {
@@ -1165,7 +1225,8 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
     const canvas = canvasRef.current;
     if (!canvas) return;
     const flatArticle = variant === "article" && (mode === "Design" || mode === "Development");
-    const targetFrameMs = flatArticle ? 33 : variant === "article" ? 50 : 16;
+    const articleDesign = variant === "article" && mode === "Design";
+    const targetFrameMs = articleDesign ? 16 : flatArticle ? 33 : variant === "article" ? 50 : 16;
     if (lastDrawRef.current && time - lastDrawRef.current < targetFrameMs) {
       rafRef.current = requestAnimationFrame(draw);
       return;
@@ -1193,6 +1254,7 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
     mouseRef.current.active *= flatArticle ? 0.955 : 0.965;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    resetCanvasPaintState(ctx);
     ctx.clearRect(0, 0, width, height);
     ctx.imageSmoothingEnabled = false;
     ctx.font = `800 ${mode === "Development" && variant === "article" ? 10.6 : variant === "article" ? 8.8 : variant === "collection" ? 10.5 : 10}px "JetBrains Mono", "SFMono-Regular", Menlo, monospace`;
@@ -1216,6 +1278,7 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
         const backdropCtx = backdrop.getContext("2d");
         if (backdropCtx) {
           backdropCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          resetCanvasPaintState(backdropCtx);
           backdropCtx.clearRect(0, 0, width, height);
           backdropCtx.imageSmoothingEnabled = false;
           if (mode === "Development") {
@@ -1226,7 +1289,9 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
         }
         backdropRef.current = { key: backdropKey, canvas: backdrop };
       }
+      resetCanvasPaintState(ctx);
       ctx.drawImage(backdropRef.current.canvas, 0, 0, width, height);
+      resetCanvasPaintState(ctx);
     }
 
     const projected = pointsRef.current.map((point, index) => {
@@ -1375,7 +1440,9 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
       let field = 0;
       if (interactionActive) {
         const fieldRadius = point.family === "design-studio"
-          ? 220
+          ? variant === "article"
+            ? point.zone === "signal" ? 190 : 152
+            : 220
           : variant === "collection" ? 170 : variant === "article" ? 145 : 130;
         if (Math.abs(dx) < fieldRadius && Math.abs(dy) < fieldRadius) {
           const distSq = dx * dx + dy * dy;
@@ -1395,12 +1462,13 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
         const jitter = Math.sin(t * 5.8 + point.pulse) * field;
         const isText = point.zone === "brand" || point.zone === "copy" || point.zone === "note" || point.zone === "panel";
         const isSurface = point.zone === "shape" || point.zone === "swatch" || point.zone === "artboard";
-        const drift = isText ? 34 : isSurface ? 24 : point.zone === "dust" ? 42 : 14;
+        const isSignal = point.zone === "signal";
+        const drift = isText ? 34 : isSurface ? 24 : isSignal ? 50 : point.zone === "dust" ? 42 : 14;
         sx += (dx / Math.max(dist, 1)) * field * drift + Math.cos(t * 4.4 + point.pulse) * field * (isText ? 16 : 8);
         sy += (dy / Math.max(dist, 1)) * field * (drift * 0.58) + Math.sin(t * 3.7 + point.pulse) * field * (isText ? 14 : 7);
-        angle += jitter * (isText ? 0.42 : isSurface ? 0.18 : 0.1);
-        shade += field * (isText ? 0.52 : 0.36);
-        size = (size ?? 8.6) + field * (isText ? 2.5 : point.zone === "dust" ? 1.8 : 1.2);
+        angle += jitter * (isText ? 0.42 : isSignal ? 0.34 : isSurface ? 0.18 : 0.1);
+        shade += field * (isText || isSignal ? 0.52 : 0.36);
+        size = (size ?? 8.6) + field * (isText ? 2.5 : isSignal ? 2.2 : point.zone === "dust" ? 1.8 : 1.2);
       }
       if (burstPower > 0) {
         const bdx = sx - burstRef.current.x;
@@ -1422,7 +1490,9 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
         z,
         shade,
         char: point.family === "design-studio"
-          ? point.char
+          ? point.zone === "signal" && field > 0.18
+            ? glyph(DESIGN_RAMP, index + Math.floor(time / 45), z)
+            : point.char
           : field > 0.18
             ? glyph(mode === "Design" ? DESIGN_RAMP : mode === "Archive" ? ARCHIVE_RAMP : DEV_RAMP, index + Math.floor(time / 45), z)
             : point.char,
@@ -1446,13 +1516,19 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
       const alpha = Math.max(0.08, Math.min(0.98, (variant === "article" ? 0.32 : 0.24) + point.shade * 0.7));
       if (point.family === "design-studio") {
         const studioAlpha = Math.max(0.12, Math.min(0.98, alpha));
+        const signalAlpha = Math.max(0.26, Math.min(0.98, alpha + point.shade * 0.22));
+        const isSignal = point.studioZone === "signal";
         const studioOnDarkSurface =
           point.studioZone === "toolbar" ||
           point.studioZone === "panel" ||
           point.studioZone === "frame" ||
           point.studioZone === "chrome" ||
           (point.studioZone === "note" && point.rawX > 1.65);
-        const color = point.tint === "amber"
+        const color = isSignal
+          ? point.tint === "amber"
+            ? (isDark ? `rgba(255,225,90,${signalAlpha})` : `rgba(172,112,22,${signalAlpha})`)
+            : (isDark ? `rgba(245,237,214,${signalAlpha * 0.78})` : `rgba(61,36,0,${signalAlpha * 0.82})`)
+          : point.tint === "amber"
           ? (studioOnDarkSurface ? `rgba(255,225,90,${studioAlpha})` : `rgba(172,112,22,${studioAlpha})`)
           : point.tint === "slate"
             ? (studioOnDarkSurface ? `rgba(205,199,181,${studioAlpha * 0.9})` : `rgba(110,108,96,${studioAlpha})`)
@@ -1472,13 +1548,18 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
           ctx.font = studioFont;
           lastStudioFont = studioFont;
         }
-        ctx.save();
-        ctx.translate(point.sx, point.sy);
-        ctx.rotate(point.angle);
         ctx.shadowBlur = 0;
+        ctx.shadowColor = "transparent";
         ctx.fillStyle = color;
-        ctx.fillText(point.char, 0, 0);
-        ctx.restore();
+        if (Math.abs(point.angle) > 0.001) {
+          ctx.save();
+          ctx.translate(point.sx, point.sy);
+          ctx.rotate(point.angle);
+          ctx.fillText(point.char, 0, 0);
+          ctx.restore();
+        } else {
+          ctx.fillText(point.char, point.sx, point.sy);
+        }
         continue;
       }
       if (point.family === "dev-terminal") {
@@ -1529,6 +1610,7 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
       ctx.fillText(point.char, point.sx, point.sy);
     }
 
+    resetCanvasPaintState(ctx);
     const shouldContinue = variant !== "article" || mouseRef.current.active > 0.02 || burstRef.current.active === 1;
     rafRef.current = shouldContinue ? requestAnimationFrame(draw) : null;
   }, [mode, variant]);
@@ -1541,7 +1623,8 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
     const width = Math.max(320, Math.floor(rect.width));
     const height = Math.max(220, Math.floor(rect.height));
     const flatArticle = variant === "article" && (mode === "Design" || mode === "Development");
-    const dpr = Math.min(window.devicePixelRatio || 1, flatArticle ? 1.35 : 2);
+    const articleDesign = variant === "article" && mode === "Design";
+    const dpr = Math.min(window.devicePixelRatio || 1, articleDesign ? 1.15 : flatArticle ? 1.35 : 2);
     sizeRef.current = { width, height, dpr };
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);

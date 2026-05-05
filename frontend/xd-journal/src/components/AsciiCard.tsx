@@ -86,14 +86,11 @@ export function AsciiCard({ article, index, isSeen, onSeen }: AsciiCardProps) {
                 style={{ minHeight: 160, display: "block" }}
               />
             ) : (
-              /* Placeholder: category label + grid texture */
+              /* Placeholder: category label */
               <div
                 className="absolute inset-0 flex items-center justify-center"
                 style={{
                   background: "var(--ascii-bg)",
-                  backgroundImage:
-                    "repeating-linear-gradient(0deg,transparent 0,transparent 22px,hsl(var(--foreground)/0.04) 22px,hsl(var(--foreground)/0.04) 23px)," +
-                    "repeating-linear-gradient(90deg,transparent 0,transparent 22px,hsl(var(--foreground)/0.04) 22px,hsl(var(--foreground)/0.04) 23px)",
                 }}
               >
                 <span

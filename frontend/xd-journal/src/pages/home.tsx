@@ -229,7 +229,7 @@ export default function Home() {
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.4 }}
         >
-          <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-muted-foreground">featured articles</span>
+          <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-muted-foreground">Quick Reads</span>
           <motion.div
             className="flex-1 h-px bg-border line-draw"
             initial={{ scaleX: 0 }}
