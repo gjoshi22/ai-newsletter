@@ -157,9 +157,6 @@ function ArticleImageStage({ article }: { article: Article }) {
 export default function ArticlePage() {
   const { slug } = useParams<{ slug: string }>();
   const article = articles.find((item) => item.slug === slug);
-  const related = articles
-    .filter((item) => item.slug !== article?.slug && item.category === article?.category)
-    .slice(0, 3);
 
   if (!article) {
     return (
@@ -199,10 +196,6 @@ export default function ArticlePage() {
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="flex flex-wrap items-center gap-4 mb-8">
-              <span className="font-mono text-[0.62rem] tracking-[0.22em] uppercase text-muted-foreground">
-                Article
-              </span>
-              <span className="h-px w-12 bg-border" />
               <span className="font-mono text-[0.62rem] tracking-[0.22em] uppercase font-semibold text-neon">
                 {article.category} :: {article.subCategory}
               </span>
@@ -274,39 +267,6 @@ export default function ArticlePage() {
           <aside className="article-art-sidebar">
             <div className="article-art-sticky">
               <AsciiExperience mode={article.subCategory} variant="article" surface={article.category} />
-              <div className="article-meta-rail">
-                <div>
-                  <p className="font-mono text-[0.52rem] tracking-[0.22em] uppercase text-muted-foreground mb-2">file</p>
-                  <p className="font-mono text-[0.64rem] tracking-[0.12em] uppercase text-foreground break-words">
-                    {article.slug}
-                  </p>
-                </div>
-                {!!article.tags?.length && (
-                  <div>
-                    <p className="font-mono text-[0.52rem] tracking-[0.22em] uppercase text-muted-foreground mb-3">tags</p>
-                    <div className="flex flex-wrap gap-2">
-                      {article.tags.map((tag) => (
-                        <span key={tag} className="font-mono text-[0.52rem] tracking-[0.14em] uppercase text-muted-foreground">
-                          [{tag}]
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="article-related-rail">
-                <p className="font-mono text-[0.58rem] tracking-[0.22em] uppercase text-muted-foreground">adjacent</p>
-                {related.map((item) => (
-                  <Link key={item.slug} href={`/dispatch/${item.slug}`} className="interactive-frame block border border-border p-4">
-                    <span className="font-mono text-[0.5rem] tracking-[0.16em] uppercase text-neon">
-                      {item.subCategory}
-                    </span>
-                    <span className="block font-mono text-[0.66rem] leading-[1.55] tracking-[0.04em] uppercase text-muted-foreground mt-3">
-                      {item.title}
-                    </span>
-                  </Link>
-                ))}
-              </div>
             </div>
           </aside>
         </main>

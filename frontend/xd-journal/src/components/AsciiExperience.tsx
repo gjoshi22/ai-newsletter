@@ -1144,12 +1144,13 @@ function drawDesignStudioField(
 
 function modeLabel(mode: AsciiExperienceMode, variant: AsciiExperienceVariant, surface?: ArticleCategory) {
   if (mode === "Archive") return "archive.vault";
-  const prefix = surface ? `/${surface.toLowerCase()}` : "";
-  if (mode === "Development") return variant === "article" ? "/development.terminal" : `${prefix}/development.orbit-field`;
-  return variant === "article" ? "/design.studio" : `${prefix}/design.cortex-field`;
+  const prefix = surface ? `${surface.toLowerCase()} ` : "";
+  if (mode === "Development") return variant === "article" ? "development terminal" : `${prefix}development orbit field`;
+  return variant === "article" ? "design studio" : `${prefix}design cortex field`;
 }
 
 export function AsciiExperience({ mode, variant = "collection", surface }: AsciiExperienceProps) {
+  const showChrome = variant !== "article";
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -1597,10 +1598,12 @@ export function AsciiExperience({ mode, variant = "collection", surface }: Ascii
         mouseRef.current.y = -9999;
       }}
     >
-      <div className="ascii-experience-bar">
-        <span>{modeLabel(mode, variant, surface)}</span>
-        <span>{mode === "Design" ? (variant === "article" ? "design board" : "kinetic lens") : mode === "Archive" ? "index vault" : variant === "article" ? "terminal trace" : "orbital trace"}</span>
-      </div>
+      {showChrome && (
+        <div className="ascii-experience-bar">
+          <span>{modeLabel(mode, variant, surface)}</span>
+          <span>{mode === "Design" ? "kinetic lens" : mode === "Archive" ? "index vault" : "orbital trace"}</span>
+        </div>
+      )}
       <canvas ref={canvasRef} aria-label={`${mode} ASCII experience`} />
     </div>
   );

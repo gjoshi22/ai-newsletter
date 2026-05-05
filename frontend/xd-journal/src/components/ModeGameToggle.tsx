@@ -1362,7 +1362,6 @@ export function ModeGameToggle({ category, activeMode, counts, onModeChange, sho
                 onClick={() => onModeChange(mode)}
               >
                 <span>{MODE_COPY[mode].title}</span>
-                <strong>{counts[mode]}</strong>
               </button>
             );
           })}
