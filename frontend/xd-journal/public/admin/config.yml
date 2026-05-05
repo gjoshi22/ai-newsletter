@@ -1,0 +1,102 @@
+backend:
+  name: github
+  repo: gjoshi22/ai-newsletter
+  branch: main
+  use_graphql: true
+
+publish_mode: editorial_workflow
+media_folder: "frontend/xd-journal/public/uploads"
+public_folder: "/ai-newsletter/uploads"
+
+site_url: "https://gjoshi22.github.io/ai-newsletter/"
+display_url: "https://gjoshi22.github.io/ai-newsletter/"
+logo_url: "/ai-newsletter/favicon.svg"
+
+collections:
+  - name: "news_design"
+    label: "News - Design"
+    folder: "backend/content/news/design"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    extension: "md"
+    format: "frontmatter"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Slug", name: "slug", widget: "string", hint: "Lowercase URL slug, for example ai-native-design-systems." }
+      - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", time_format: false }
+      - { label: "Category", name: "category", widget: "hidden", default: "News" }
+      - { label: "Subcategory", name: "subCategory", widget: "hidden", default: "Design" }
+      - { label: "Excerpt", name: "excerpt", widget: "text" }
+      - { label: "Thumbnail", name: "thumbnail", widget: "image", required: false }
+      - { label: "Tags", name: "tags", widget: "list", required: false }
+      - { label: "Featured", name: "featured", widget: "boolean", default: false }
+      - { label: "Status", name: "status", widget: "select", options: ["draft", "published"], default: "published" }
+      - { label: "ASCII Type", name: "asciiType", widget: "number", value_type: "int", min: 1, max: 10, default: 1 }
+      - { label: "Source URL", name: "sourceUrl", widget: "string", required: false }
+      - { label: "Body", name: "body", widget: "markdown" }
+
+  - name: "news_dev"
+    label: "News - Development"
+    folder: "backend/content/news/dev"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    extension: "md"
+    format: "frontmatter"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Slug", name: "slug", widget: "string" }
+      - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", time_format: false }
+      - { label: "Category", name: "category", widget: "hidden", default: "News" }
+      - { label: "Subcategory", name: "subCategory", widget: "hidden", default: "Development" }
+      - { label: "Excerpt", name: "excerpt", widget: "text" }
+      - { label: "Thumbnail", name: "thumbnail", widget: "image", required: false }
+      - { label: "Tags", name: "tags", widget: "list", required: false }
+      - { label: "Featured", name: "featured", widget: "boolean", default: false }
+      - { label: "Status", name: "status", widget: "select", options: ["draft", "published"], default: "published" }
+      - { label: "ASCII Type", name: "asciiType", widget: "number", value_type: "int", min: 1, max: 10, default: 1 }
+      - { label: "Source URL", name: "sourceUrl", widget: "string", required: false }
+      - { label: "Body", name: "body", widget: "markdown" }
+
+  - name: "resources_design"
+    label: "Resources - Design"
+    folder: "backend/content/resources/design"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    extension: "md"
+    format: "frontmatter"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Slug", name: "slug", widget: "string" }
+      - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", time_format: false }
+      - { label: "Category", name: "category", widget: "hidden", default: "Resources" }
+      - { label: "Subcategory", name: "subCategory", widget: "hidden", default: "Design" }
+      - { label: "Excerpt", name: "excerpt", widget: "text" }
+      - { label: "Thumbnail", name: "thumbnail", widget: "image", required: false }
+      - { label: "Tags", name: "tags", widget: "list", required: false }
+      - { label: "Featured", name: "featured", widget: "boolean", default: false }
+      - { label: "Status", name: "status", widget: "select", options: ["draft", "published"], default: "published" }
+      - { label: "ASCII Type", name: "asciiType", widget: "number", value_type: "int", min: 1, max: 10, default: 1 }
+      - { label: "Source URL", name: "sourceUrl", widget: "string", required: false }
+      - { label: "Body", name: "body", widget: "markdown" }
+
+  - name: "resources_dev"
+    label: "Resources - Development"
+    folder: "backend/content/resources/dev"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    extension: "md"
+    format: "frontmatter"
+    fields:
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Slug", name: "slug", widget: "string" }
+      - { label: "Date", name: "date", widget: "datetime", format: "YYYY-MM-DD", time_format: false }
+      - { label: "Category", name: "category", widget: "hidden", default: "Resources" }
+      - { label: "Subcategory", name: "subCategory", widget: "hidden", default: "Development" }
+      - { label: "Excerpt", name: "excerpt", widget: "text" }
+      - { label: "Thumbnail", name: "thumbnail", widget: "image", required: false }
+      - { label: "Tags", name: "tags", widget: "list", required: false }
+      - { label: "Featured", name: "featured", widget: "boolean", default: false }
+      - { label: "Status", name: "status", widget: "select", options: ["draft", "published"], default: "published" }
+      - { label: "ASCII Type", name: "asciiType", widget: "number", value_type: "int", min: 1, max: 10, default: 1 }
+      - { label: "Source URL", name: "sourceUrl", widget: "string", required: false }
+      - { label: "Body", name: "body", widget: "markdown" }

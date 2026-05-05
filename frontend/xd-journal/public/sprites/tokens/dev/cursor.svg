@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-labelledby="title">
+  <title id="title">Cursor</title>
+  <rect width="640" height="640" rx="96" fill="#fff"/>
+  <path fill="#202018" d="M320 74 546 206v228L320 566 94 434V206L320 74Z"/>
+  <path fill="#fff" d="M128 220h384L320 552V334L128 220Z"/>
+  <path fill="#202018" d="m94 206 226 128v218L94 434V206Z" opacity=".96"/>
+  <path fill="#202018" d="M546 206 320 552l226-118V206Z" opacity=".96"/>
+  <path fill="#202018" d="M320 74 546 206H94L320 74Z"/>
+  <path fill="#fff" d="M142 220h356L324 520V330L142 220Z"/>
+</svg>
