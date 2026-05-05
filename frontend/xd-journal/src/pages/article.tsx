@@ -133,7 +133,7 @@ function ArticleImageStage({ article }: { article: Article }) {
     return (
       <figure className="article-image-stage">
         <img src={article.image} alt="" />
-        <figcaption>{article.category} / {article.subCategory} visual reference</figcaption>
+        <figcaption>{article.category} :: {article.subCategory} visual reference</figcaption>
       </figure>
     );
   }
@@ -149,7 +149,7 @@ function ArticleImageStage({ article }: { article: Article }) {
         ))}
       </div>
       <div className="article-image-orbit" aria-hidden="true" />
-      <figcaption>{article.category} / {article.subCategory} generated field image</figcaption>
+      <figcaption>{article.category} :: {article.subCategory} generated field image</figcaption>
     </figure>
   );
 }
@@ -168,8 +168,8 @@ export default function ArticlePage() {
         <ScrollProgress />
         <Navigation />
         <main className="relative max-w-[900px] mx-auto px-6 md:px-12 pt-32">
-          <p className="font-mono text-[0.65rem] tracking-[0.24em] uppercase text-neon mb-4">/dispatch missing</p>
-          <h1 className="font-mono font-bold text-4xl uppercase">Dispatch not found</h1>
+          <p className="font-mono text-[0.65rem] tracking-[0.24em] uppercase text-neon mb-4">Article missing</p>
+          <h1 className="font-mono font-bold text-4xl uppercase">Article not found</h1>
           <Link href="/" className="interactive-ink inline-flex mt-8 font-mono text-[0.65rem] tracking-[0.18em] uppercase text-muted-foreground">
             back home
           </Link>
@@ -200,21 +200,21 @@ export default function ArticlePage() {
           >
             <div className="flex flex-wrap items-center gap-4 mb-8">
               <span className="font-mono text-[0.62rem] tracking-[0.22em] uppercase text-muted-foreground">
-                Vol.01 - dispatch
+                Article
               </span>
               <span className="h-px w-12 bg-border" />
               <span className="font-mono text-[0.62rem] tracking-[0.22em] uppercase font-semibold text-neon">
-                {article.category} / {article.subCategory}
+                {article.category} :: {article.subCategory}
               </span>
               <span className="ml-auto hidden md:inline font-mono text-[0.58rem] tracking-[0.16em] uppercase text-muted-foreground">
-                {formatDate(article.date)} {article.readingTime ? `/// ${article.readingTime} min read` : ""}
+                {formatDate(article.date)} {article.readingTime ? `:: ${article.readingTime} min read` : ""}
               </span>
             </div>
 
             <div className="article-hero-grid">
               <div className="article-title-block">
                 <p className="md:hidden font-mono text-[0.58rem] tracking-[0.16em] uppercase text-muted-foreground mb-5">
-                  {formatDate(article.date)} {article.readingTime ? `/// ${article.readingTime} min read` : ""}
+                  {formatDate(article.date)} {article.readingTime ? `:: ${article.readingTime} min read` : ""}
                 </p>
                 <h1 className="article-page-title">
                   {article.title}
@@ -241,7 +241,7 @@ export default function ArticlePage() {
         <main className="article-experience-grid relative max-w-[1600px] mx-auto px-6 md:px-12 py-10 md:py-14">
           <section className="article-body-panel">
             <div className="article-body-chrome">
-              <span>/dispatch.body</span>
+              <span>Article body</span>
               <span>{article.readingTime ? `${article.readingTime} min read` : "ready"}</span>
             </div>
             <ArticleImageStage article={article} />

@@ -71,13 +71,13 @@ export default function Archive() {
               transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             >
               <p className="font-mono text-[0.65rem] tracking-[0.24em] uppercase text-neon mb-3">
-                /archive
+                Archive
               </p>
               <h1 className="page-display-title">
                 Past Issues
               </h1>
               <p className="font-mono text-[0.7rem] text-muted-foreground tracking-wide mt-4">
-                {allArticles.length} total dispatches &nbsp;—&nbsp; full-text search below
+                {allArticles.length} total articles &nbsp;—&nbsp; full-text search below
               </p>
             </motion.div>
             <div className="-translate-y-3 md:-translate-y-4">
@@ -175,7 +175,7 @@ export default function Archive() {
                       style={{ originX: 0 }}
                     />
                     <span className="font-mono text-[0.6rem] tracking-[0.2em] uppercase text-muted-foreground">
-                      {months.reduce((t, m) => t + m.items.length, 0)}&nbsp;dispatches
+                      {months.reduce((t, m) => t + m.items.length, 0)}&nbsp;articles
                     </span>
                   </div>
 

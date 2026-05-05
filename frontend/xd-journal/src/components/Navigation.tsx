@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 const navItems = [
-  { href: "/news", label: "/news", hide: "" },
-  { href: "/resources", label: "/resources", hide: "hidden sm:inline-flex" },
-  { href: "/archive", label: "/archive", hide: "hidden md:inline-flex" },
+  { href: "/news", label: "News" },
+  { href: "/resources", label: "Resources" },
+  { href: "/archive", label: "Archive" },
 ];
 
 export function Navigation() {
@@ -28,16 +28,16 @@ export function Navigation() {
     }`}>
       <div className="w-full max-w-[1600px] mx-auto px-6 md:px-12 flex items-center justify-between">
 
-        <Link href="/">
+        <Link href="/" aria-label="Go to XD AI Journal home">
           <span
             data-cursor-hover
-            className="interactive-ink font-mono text-[0.62rem] font-bold tracking-[0.22em] uppercase cursor-pointer select-none"
+            className="interactive-ink nav-home-link font-mono uppercase cursor-pointer select-none"
           >
-            XD_AI_JOURNAL
+            XD AI Journal
           </span>
         </Link>
 
-        <div className="flex items-center gap-5 md:gap-8">
+        <div className="nav-actions" aria-label="Primary navigation">
           {navItems.map((item) => {
             const isActive = location === item.href || location.startsWith(`${item.href}/`);
             return (
@@ -45,7 +45,7 @@ export function Navigation() {
                 <span
                   data-cursor-hover
                   aria-current={isActive ? "page" : undefined}
-                  className={`interactive-ink nav-link ${item.hide} ${isActive ? "nav-link-active" : ""} font-mono text-[0.58rem] tracking-[0.2em] uppercase text-muted-foreground cursor-pointer`}
+                  className={`interactive-ink nav-link ${isActive ? "nav-link-active" : ""} font-mono uppercase text-muted-foreground cursor-pointer`}
                 >
                   {item.label}
                 </span>
@@ -57,10 +57,10 @@ export function Navigation() {
             <motion.button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               data-cursor-hover
-              className="interactive-ink font-mono text-[0.58rem] tracking-[0.2em] uppercase text-muted-foreground"
+              className="interactive-ink nav-link nav-theme-toggle font-mono uppercase text-muted-foreground"
               whileTap={{ scale: 0.88 }}
             >
-              {theme === "dark" ? "[ light ]" : "[ dark  ]"}
+              {theme === "dark" ? "[ Light ]" : "[ Dark ]"}
             </motion.button>
           )}
         </div>

@@ -1143,7 +1143,7 @@ function drawDesignStudioField(
 }
 
 function modeLabel(mode: AsciiExperienceMode, variant: AsciiExperienceVariant, surface?: ArticleCategory) {
-  if (mode === "Archive") return "/archive.vault";
+  if (mode === "Archive") return "archive.vault";
   const prefix = surface ? `/${surface.toLowerCase()}` : "";
   if (mode === "Development") return variant === "article" ? "/development.terminal" : `${prefix}/development.orbit-field`;
   return variant === "article" ? "/design.studio" : `${prefix}/design.cortex-field`;

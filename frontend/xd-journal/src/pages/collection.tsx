@@ -91,8 +91,8 @@ export default function CollectionPage({ category }: CollectionPageProps) {
           >
             <div className="collection-title-block">
               <div className="collection-hero-kicker">
-                <span>/{category.toLowerCase()}</span>
-                <span>{String(totalCount).padStart(2, "0")} indexed</span>
+                <span>{category}</span>
+                <span>{String(totalCount).padStart(2, "0")} articles</span>
               </div>
               <div className="collection-ascii-title" aria-hidden="true">
                 <HeroAsciiCanvas lines={heroLines} ariaLabel={category} />
@@ -129,7 +129,7 @@ export default function CollectionPage({ category }: CollectionPageProps) {
               <div className="collection-lens-card" data-mode={activeFilter.toLowerCase()}>
                 <div className="collection-lens-mark">
                   <span>{String(filtered.length).padStart(2, "0")}</span>
-                  <small>{category === "News" ? "dispatches" : "refs"}</small>
+                  <small>{category === "News" ? "articles" : "references"}</small>
                 </div>
                 <div className="collection-lens-copy">
                   <strong>{activeFilter === "Design" ? "Design reading stack" : "Dev reading stack"}</strong>
@@ -158,7 +158,7 @@ export default function CollectionPage({ category }: CollectionPageProps) {
       <main className="collection-main max-w-[1600px] mx-auto px-6 md:px-12">
         <div className="collection-toolbar">
           <div className="collection-toolbar-copy">
-            <p>{activeFilter} /// {filtered.length} dispatches</p>
+            <p>{activeFilter} :: {filtered.length} articles</p>
             <strong>{category === "News" ? "Filed signals" : "Reusable references"}</strong>
           </div>
           <div className="collection-toolbar-controls">

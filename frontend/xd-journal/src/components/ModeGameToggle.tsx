@@ -1378,8 +1378,8 @@ export function ModeGameToggle({ category, activeMode, counts, onModeChange, sho
           <p className="font-mono text-[0.55rem] tracking-[0.22em] uppercase text-neon">/{category.toLowerCase()}.world</p>
           <p className="font-mono text-[0.6rem] tracking-[0.14em] uppercase text-muted-foreground mt-1">
             {showGame
-              ? `${hud.message} /// level ${levelCode(hud.stage)} /// ${hud.tokens} ${MODE_COPY[activeMode].token} /// level ${hud.level} /// life ${hud.lives}`
-              : `${MODE_COPY[activeMode].title} mode /// ${counts[activeMode]} dispatches /// ${category.toLowerCase()}.grid`}
+              ? `${hud.message} :: level ${levelCode(hud.stage)} :: ${hud.tokens} ${MODE_COPY[activeMode].token} :: level ${hud.level} :: life ${hud.lives}`
+              : `${MODE_COPY[activeMode].title} mode :: ${counts[activeMode]} articles :: ${category.toLowerCase()}.grid`}
           </p>
         </div>
         <div className="mode-game-controls">
@@ -1423,8 +1423,8 @@ export function ModeGameToggle({ category, activeMode, counts, onModeChange, sho
         >
           <canvas ref={canvasRef} aria-label={`${activeMode} platformer. Click to play. Use arrows or A/D to move, Space or K to jump, Shift or J to run.`} />
           <div className="mode-game-caption">
-            <span>{MODE_COPY[activeMode].title} mode /// click to play</span>
-            <span>arrows or A/D /// space to jump /// shift to run</span>
+            <span>{MODE_COPY[activeMode].title} mode :: click to play</span>
+            <span>arrows or A-D :: space to jump :: shift to run</span>
           </div>
         </div>
       )}

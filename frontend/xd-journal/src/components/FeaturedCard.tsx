@@ -82,7 +82,7 @@ export function FeaturedCard({ article, isSeen, onSeen }: FeaturedCardProps) {
               transition={{ delay: 0.18, duration: 0.4 }}
             >
               <span className="font-mono text-[0.65rem] tracking-[0.2em] uppercase font-semibold text-neon">
-                {article.category} / {article.subCategory}
+                {article.category} :: {article.subCategory}
               </span>
               <span className="h-px flex-1 bg-border" />
               <span className="font-mono text-[0.62rem] text-muted-foreground">{dateStr}</span>
@@ -118,9 +118,9 @@ export function FeaturedCard({ article, isSeen, onSeen }: FeaturedCardProps) {
             transition={{ delay: 0.44, duration: 0.4 }}
           >
             <span className="interactive-frame font-mono text-[0.65rem] tracking-[0.18em] uppercase border border-border px-6 py-3 group-hover:border-neon group-hover:text-neon transition-all duration-200">
-              read dispatch →
+              read article →
             </span>
-            <span className="font-mono text-[0.6rem] text-muted-foreground tracking-widest uppercase">latest issue</span>
+            <span className="font-mono text-[0.6rem] text-muted-foreground tracking-widest uppercase">featured read</span>
             {isSeen && (
               <span
                 className="font-mono text-[0.55rem] tracking-[0.18em] uppercase select-none ml-auto"

@@ -61,40 +61,12 @@ function Ticker() {
               [{a.subCategory.slice(0, 3)}]
             </span>
             <span className="font-mono text-[0.58rem] text-muted-foreground tracking-wide pr-8">{a.title}</span>
-            <span className="font-mono text-[0.45rem] text-muted-foreground pr-4" style={{ opacity: 0.3 }}>///</span>
+            <span className="font-mono text-[0.45rem] text-muted-foreground pr-4" style={{ opacity: 0.3 }}>::</span>
           </span>
         ))}
       </div>
     </div>
   );
-}
-
-/* ── Animated counter ── */
-function CountUp({ target }: { target: number }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const started = useRef(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !started.current) {
-        started.current = true;
-        const step = Math.ceil(target / 30);
-        let current = 0;
-        const timer = setInterval(() => {
-          current = Math.min(current + step, target);
-          setCount(current);
-          if (current >= target) clearInterval(timer);
-        }, 40);
-      }
-    }, { threshold: 0.5 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [target]);
-
-  return <span ref={ref}>{count}</span>;
 }
 
 /* ── Scroll cue — inline between tagline pieces ── */
@@ -178,25 +150,6 @@ export default function Home() {
           className="relative z-10 max-w-[1600px] mx-auto px-6 md:px-12 pt-14 pb-0"
           style={{ opacity: heroOp }}
         >
-          {/* Eyebrow */}
-          <motion.div
-            className="flex items-center gap-4 mb-3"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <span className="font-mono text-[0.62rem] tracking-[0.22em] uppercase text-muted-foreground">
-              Vol.01 — {new Date().getFullYear()}
-            </span>
-            <span className="h-px w-10 bg-border" />
-            <span className="font-mono text-[0.62rem] tracking-[0.22em] uppercase font-semibold text-neon">
-              AI Curation
-            </span>
-            <span className="ml-auto font-mono text-[0.58rem] text-muted-foreground hidden md:block">
-              <CountUp target={articles.length} /> dispatches indexed
-            </span>
-          </motion.div>
-
           {/* ── ASCII particle title ── */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -238,7 +191,7 @@ export default function Home() {
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.4 }}
         >
-          <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-muted-foreground">latest dispatch</span>
+          <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-muted-foreground">featured article</span>
           <motion.div
             className="flex-1 h-px bg-border line-draw"
             initial={{ scaleX: 0 }}
@@ -255,12 +208,12 @@ export default function Home() {
       <section className="max-w-[1600px] mx-auto px-6 md:px-12 pt-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Link href="/news" className="collection-link interactive-frame">
-            <span>/news</span>
-            <strong>{newsCount} dispatches</strong>
+            <span>News</span>
+            <strong>{newsCount} articles</strong>
             <p>Signals, launches, analysis, and field notes.</p>
           </Link>
           <Link href="/resources" className="collection-link interactive-frame">
-            <span>/resources</span>
+            <span>Resources</span>
             <strong>{resourceCount} references</strong>
             <p>Playbooks, workflows, checklists, and reusable guides.</p>
           </Link>
@@ -276,7 +229,7 @@ export default function Home() {
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.4 }}
         >
-          <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-muted-foreground">front page index</span>
+          <span className="font-mono text-[0.62rem] tracking-[0.2em] uppercase text-muted-foreground">featured articles</span>
           <motion.div
             className="flex-1 h-px bg-border line-draw"
             initial={{ scaleX: 0 }}
@@ -309,7 +262,7 @@ function EmptyState() {
   │  > _                     │
   └──────────────────────────┘`}
       </pre>
-      <p className="font-mono text-[0.62rem] tracking-[0.22em] uppercase text-muted-foreground">nothing indexed yet</p>
+      <p className="font-mono text-[0.62rem] tracking-[0.22em] uppercase text-muted-foreground">nothing found yet</p>
     </div>
   );
 }
@@ -319,8 +272,8 @@ function SiteFooter() {
     <footer className="border-t border-border mt-16">
       <div className="max-w-[1600px] mx-auto px-6 md:px-12 py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[0.6rem] font-bold tracking-[0.22em] uppercase">XD_AI_JOURNAL</span>
-          <span className="font-mono text-[0.58rem] text-muted-foreground tracking-widest">— {new Date().getFullYear()} — All dispatches indexed.</span>
+          <span className="font-mono text-[0.6rem] font-bold tracking-[0.22em] uppercase">XD AI Journal</span>
+          <span className="font-mono text-[0.58rem] text-muted-foreground tracking-widest">— {new Date().getFullYear()} — All articles.</span>
         </div>
         <div className="flex items-center gap-8">
           <Link

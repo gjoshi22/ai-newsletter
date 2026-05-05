@@ -40,7 +40,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
             color: "#F5C518",
           }}
         >
-          <pre style={{ fontSize: "0.7rem", opacity: 0.6 }}>{`┌─[XD_AI_JOURNAL]─────────────────┐
+          <pre style={{ fontSize: "0.7rem", opacity: 0.6 }}>{`┌─[XD AI JOURNAL]─────────────────┐
 │  $ runtime --check               │
 │  > error caught by boundary      │
 │  > ${(this.state.message || "unknown error").slice(0, 28).padEnd(28)} │
