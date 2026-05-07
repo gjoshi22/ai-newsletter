@@ -60,6 +60,9 @@ const FACE_FLIP_COOLDOWN_MS = 220;
 const FACE_MOTION_DEAD_ZONE = 1.35;
 const FACE_CURSOR_DEAD_ZONE = 72;
 const MOTION_KIND_HOLD_MS = 190;
+const POINTER_FRAME_MS = 1000 / 60;
+const FOLLOW_INTENT_HOLD_MS = 240;
+const MOTION_ACTIVE_HOLD_MS = 180;
 const MOTION_DIRECTION_AXIS_BIAS = 1.22;
 const MOTION_DIRECTION_DEAD_ZONE = 1.05;
 const DIRECTION_SWITCH_MIN_SPEED = 1.4;
@@ -168,7 +171,7 @@ function keepAwayFromControls(point: Point, avoidRects: AvoidRect[]) {
 }
 
 function motionKindFor(dx: number, dy: number, speed: number): MascotMotionKind {
-  if (speed < 0.58) return "idle";
+  if (speed < 0.32) return "idle";
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
   if (absX >= absY * 1.08) return "walk";
@@ -223,10 +226,10 @@ function motionVisuals(motion: MascotMotion, time: number) {
     const falling = Math.max(0, verticalLean);
     const rising = Math.max(0, -verticalLean);
     return {
-      floatY: verticalLean * 2.2 + floatCycle * 1.45 * speedRatio,
-      scaleX: 1 + falling * 0.022 - rising * 0.012 + Math.abs(floatCycle) * 0.012 * speedRatio,
-      scaleY: 1 - falling * 0.016 + rising * 0.022 - Math.abs(floatCycle) * 0.008 * speedRatio,
-      rotation: sideLean * 0.012,
+      floatY: floatCycle * 0.95 * speedRatio,
+      scaleX: 1 + falling * 0.007 - rising * 0.004 + Math.abs(floatCycle) * 0.006 * speedRatio,
+      scaleY: 1 - falling * 0.005 + rising * 0.007 - Math.abs(floatCycle) * 0.004 * speedRatio,
+      rotation: sideLean * 0.006,
     };
   }
 
@@ -336,6 +339,8 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
   const avoidRectsRef = useRef<AvoidRect[]>([]);
   const cursorRef = useRef({ x: -220, y: -220, active: false });
   const cursorVelocityRef = useRef({ x: 0, y: 0 });
+  const lastCursorSampleAtRef = useRef(0);
+  const followIntentUntilRef = useRef(0);
   const posRef = useRef({ x: -220, y: -220 });
   const lastPosRef = useRef({ x: -220, y: -220 });
   const visualVelocityRef = useRef({ x: 0, y: 0 });
@@ -344,7 +349,8 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
   const motionKindRef = useRef<MascotMotionKind>("idle");
   const lastMotionKindSwitchRef = useRef(0);
   const motionDirectionRef = useRef<WalkDirection>("right");
-  const lastMotionDirectionSwitchRef = useRef(0);
+  const directionSettleUntilRef = useRef(0);
+  const motionActiveUntilRef = useRef(0);
   const pendingMotionDirectionRef = useRef<PendingMotionDirection | null>(null);
   const motionCycleStartRef = useRef(0);
   const followingRef = useRef(false);
@@ -429,12 +435,15 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
     posRef.current = seeded;
     lastPosRef.current = seeded;
     visualVelocityRef.current = { x: 0, y: 0 };
+    cursorVelocityRef.current = { x: 0, y: 0 };
+    followIntentUntilRef.current = 0;
+    motionActiveUntilRef.current = 0;
     followingRef.current = false;
     motionKindRef.current = "idle";
     motionDirectionRef.current = facingLeftRef.current ? "left" : "right";
     pendingMotionDirectionRef.current = null;
+    directionSettleUntilRef.current = 0;
     motionCycleStartRef.current = window.performance.now();
-    lastMotionDirectionSwitchRef.current = motionCycleStartRef.current;
     hasPositionRef.current = true;
   }, []);
 
@@ -561,31 +570,53 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
     };
     const onPointerMove = (event: PointerEvent) => {
       const previous = cursorRef.current;
+      const now = window.performance.now();
       const overControls = pointInAvoidZone(event.clientX, event.clientY, avoidRectsRef.current);
       if (!hasPositionRef.current && !overControls) {
         seedMascotPosition({ x: event.clientX, y: event.clientY });
       }
-      cursorVelocityRef.current = {
-        x: overControls || !previous.active ? 0 : event.clientX - previous.x,
-        y: overControls || !previous.active ? 0 : event.clientY - previous.y,
+      const rawDx = overControls || !previous.active ? 0 : event.clientX - previous.x;
+      const rawDy = overControls || !previous.active ? 0 : event.clientY - previous.y;
+      const previousSampleAt = lastCursorSampleAtRef.current || now - POINTER_FRAME_MS;
+      const sampleDeltaMs = clamp(now - previousSampleAt, 8, 48);
+      const frameScale = POINTER_FRAME_MS / sampleDeltaMs;
+      const normalizedVelocity = {
+        x: rawDx * frameScale,
+        y: rawDy * frameScale,
       };
+      const rawDistance = distance(rawDx, rawDy);
+      const velocityEase = rawDistance > 0.2 ? 0.72 : 0.35;
+      cursorVelocityRef.current = {
+        x: cursorVelocityRef.current.x + (normalizedVelocity.x - cursorVelocityRef.current.x) * velocityEase,
+        y: cursorVelocityRef.current.y + (normalizedVelocity.y - cursorVelocityRef.current.y) * velocityEase,
+      };
+      lastCursorSampleAtRef.current = now;
       cursorRef.current = {
         x: event.clientX,
         y: event.clientY,
         active: !overControls,
       };
-      if (overControls) followingRef.current = false;
+      if (!overControls && rawDistance > 0.2) {
+        followIntentUntilRef.current = now + FOLLOW_INTENT_HOLD_MS;
+      }
+      if (overControls) {
+        followingRef.current = false;
+        followIntentUntilRef.current = 0;
+      }
     };
     const onPointerLeave = () => {
       cursorRef.current.active = false;
       cursorVelocityRef.current = { x: 0, y: 0 };
       followingRef.current = false;
+      followIntentUntilRef.current = 0;
+      lastCursorSampleAtRef.current = 0;
     };
     const onPointerCancel = () => {
       clearHoldTimer();
       pressRef.current = null;
       draggingRef.current = false;
       hoverLockRef.current = false;
+      followIntentUntilRef.current = 0;
       setDragging(false);
     };
 
@@ -777,13 +808,15 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
       const cursorDistance = distance(cursor.x - pos.x, cursor.y - pos.y);
       const isLocked = lockedRef.current;
       const canFollowCursor = cursor.active && hasPositionRef.current && !openRef.current && !isLocked;
+      const cursorMovingRecently = time < followIntentUntilRef.current;
       const shouldFollow = draggingRef.current || (
         canFollowCursor &&
         !hoverLockRef.current &&
         (
-          followingRef.current
-            ? cursorDistance > CATCH_RADIUS || velocityMagnitude > 7
-            : cursorDistance > RELEASE_RADIUS || velocityMagnitude > 12
+          cursorMovingRecently ||
+          (followingRef.current
+            ? cursorDistance > CATCH_RADIUS || velocityMagnitude > 2.2
+            : cursorDistance > RELEASE_RADIUS || velocityMagnitude > 3.2)
         )
       );
       followingRef.current = shouldFollow && !draggingRef.current;
@@ -819,13 +852,17 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
       const measuredDx = shouldFollow ? moveX : 0;
       const measuredDy = shouldFollow ? moveY : 0;
       const velocityEase = draggingRef.current ? 0.62 : 0.18;
+      if (shouldFollow || targetDistance > 2.4) {
+        motionActiveUntilRef.current = time + MOTION_ACTIVE_HOLD_MS;
+      }
       visualVelocityRef.current = {
         x: visualVelocityRef.current.x + (measuredDx - visualVelocityRef.current.x) * velocityEase,
         y: visualVelocityRef.current.y + (measuredDy - visualVelocityRef.current.y) * velocityEase,
       };
       const visualDx = visualVelocityRef.current.x;
       const visualDy = visualVelocityRef.current.y;
-      const visualSpeed = Math.max(speed, distance(visualDx, visualDy));
+      const motionStillActive = time < motionActiveUntilRef.current;
+      const visualSpeed = Math.max(speed, distance(visualDx, visualDy), motionStillActive ? 0.34 : 0);
       const nextMotionKind = motionKindFor(visualDx, visualDy, visualSpeed);
       const previousMotionKind = motionKindRef.current;
       const motionKind = stableMotionKind(nextMotionKind, previousMotionKind, lastMotionKindSwitchRef.current, time);
@@ -843,10 +880,15 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
         if (!pendingDirection || pendingDirection.direction !== nextMotionDirection) {
           pendingMotionDirectionRef.current = { direction: nextMotionDirection, since: time };
         } else if (time - pendingDirection.since >= directionSwitchHold(nextMotionDirection, motionDirection)) {
+          const crossAxisTurn = directionAxis(nextMotionDirection) !== directionAxis(motionDirection);
           motionDirection = nextMotionDirection;
           motionDirectionRef.current = motionDirection;
-          lastMotionDirectionSwitchRef.current = time;
-          motionCycleStartRef.current = time;
+          if (crossAxisTurn) {
+            motionCycleStartRef.current = time;
+            directionSettleUntilRef.current = time + TURN_SETTLE_MS;
+          } else {
+            directionSettleUntilRef.current = 0;
+          }
           pendingMotionDirectionRef.current = null;
         }
       }
@@ -886,7 +928,7 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
       const poseFrames = POSE_FRAMES_BY_MODE[activeModeRef.current];
       const movingFrameMs = motionDirection === "up" || motionDirection === "down" ? FLOAT_FRAME_MS : WALK_FRAME_MS;
       const motionCycleTime = Math.max(0, time - motionCycleStartRef.current);
-      const directionSettling = motionKind !== "idle" && time - lastMotionDirectionSwitchRef.current < TURN_SETTLE_MS;
+      const directionSettling = motionKind !== "idle" && time < directionSettleUntilRef.current;
       const frame = motionKind === "walk" || motionKind === "float"
         ? movingFrames[directionSettling ? 0 : Math.floor(motionCycleTime / movingFrameMs) % movingFrames.length]
         : motionKind === "idle" && Math.floor(time / 520) % 5 === 0
