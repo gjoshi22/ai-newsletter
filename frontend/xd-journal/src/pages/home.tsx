@@ -1,13 +1,14 @@
 import { useMemo, useRef, useEffect, useState } from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, useScroll, useSpring } from "framer-motion";
 import { Link } from "wouter";
 import { Navigation } from "@/components/Navigation";
 import { AsciiCard } from "@/components/AsciiCard";
 import { FeaturedCard } from "@/components/FeaturedCard";
-import { CustomCursor } from "@/components/CustomCursor";
+import { DeferredCustomCursor } from "@/components/DeferredCustomCursor";
 import { HeroAsciiCanvas } from "@/components/HeroAsciiCanvas";
-import { articles } from "@/lib/data";
-import { useSeenArticles } from "@/hooks/useSeenArticles";
+import { usePublishedArticles } from "@/hooks/usePublishedArticles";
+import type { Article } from "@/lib/data";
+import { SiteFooter } from "@/components/SiteFooter";
 
 /* ── Scroll progress ── */
 function ScrollProgress() {
@@ -50,7 +51,7 @@ function FitText({ children, maxSize }: { children: string; maxSize?: number }) 
 }
 
 /* ── Ticker ── */
-function Ticker() {
+function Ticker({ articles }: { articles: Article[] }) {
   const doubled = [...articles.slice(0, 8), ...articles.slice(0, 8)];
   return (
     <div className="border-t border-b border-border overflow-hidden" style={{ background: "var(--ticker-bg)" }}>
@@ -122,19 +123,15 @@ function ScrollCue() {
 
 /* ── Home ── */
 export default function Home() {
-  const { markSeen, isSeen } = useSeenArticles();
-
-  const { scrollY } = useScroll();
-  const heroOp = useTransform(scrollY, [0, 320], [1, 0.6]);
-
-  const featured = useMemo(() => articles.find(a => a.isNew) ?? articles[0], []);
-  const latest = useMemo(() => articles.filter(a => a.id !== featured.id).slice(0, 6), [featured]);
-  const newsCount = useMemo(() => articles.filter((article) => article.category === "News").length, []);
-  const resourceCount = useMemo(() => articles.filter((article) => article.category === "Resources").length, []);
+  const { data: articles = [] } = usePublishedArticles();
+  const featured = useMemo(() => articles.find((a) => a.isNew) ?? articles[0], [articles]);
+  const latest = useMemo(() => articles.filter((a) => a.id !== featured?.id).slice(0, 6), [articles, featured]);
+  const newsCount = useMemo(() => articles.filter((article) => article.category === "News").length, [articles]);
+  const resourceCount = useMemo(() => articles.filter((article) => article.category === "Resources").length, [articles]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <CustomCursor />
+      <DeferredCustomCursor />
       <ScrollProgress />
       <Navigation />
 
@@ -146,11 +143,8 @@ export default function Home() {
           style={{ background: "radial-gradient(ellipse 85% 65% at 50% 45%, transparent 25%, hsl(var(--background)) 100%)" }}
         />
 
-        <motion.div
-          className="relative z-10 max-w-[1600px] mx-auto px-6 md:px-12 pt-14 pb-0"
-          style={{ opacity: heroOp }}
-        >
-          {/* ── ASCII particle title ── */}
+        <div className="relative z-10 max-w-[1600px] mx-auto px-6 md:px-12 pt-14 pb-0">
+          {/* ── ASCII particle title — outside scroll opacity for smoother canvas updates ── */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -159,8 +153,7 @@ export default function Home() {
           >
             <HeroAsciiCanvas />
           </motion.div>
-
-        </motion.div>
+        </div>
 
         {/* Tagline — outside parallax so it never overlaps the ticker */}
         <motion.div
@@ -179,7 +172,7 @@ export default function Home() {
           </div>
         </motion.div>
 
-        <Ticker />
+        <Ticker articles={articles} />
       </header>
 
       {/* ══════════════════════ FEATURED ══════════════════════ */}
@@ -201,7 +194,7 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           />
         </motion.div>
-        <FeaturedCard article={featured} isSeen={isSeen(featured.id)} onSeen={() => markSeen(featured.id)} />
+        {featured ? <FeaturedCard article={featured} /> : null}
       </section>
 
       {/* ══════════════════════ COLLECTION PATHS ══════════════════════ */}
@@ -242,7 +235,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {latest.map((article, i) => (
-            <AsciiCard key={article.id} article={article} index={i} isSeen={isSeen(article.id)} onSeen={() => markSeen(article.id)} />
+            <AsciiCard key={article.id} article={article} index={i} />
           ))}
         </div>
       </main>
@@ -267,32 +260,4 @@ function EmptyState() {
   );
 }
 
-function SiteFooter() {
-  return (
-    <footer className="border-t border-border mt-16">
-      <div className="max-w-[1600px] mx-auto px-6 md:px-12 py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[0.6rem] font-bold tracking-[0.22em] uppercase">XD AI Journal</span>
-          <span className="font-mono text-[0.58rem] text-muted-foreground tracking-widest">— {new Date().getFullYear()} — All articles.</span>
-        </div>
-        <div className="flex items-center gap-8">
-          <Link
-            href="/news"
-            data-cursor-hover
-            className="interactive-ink font-mono text-[0.6rem] tracking-[0.18em] uppercase text-muted-foreground"
-          >
-            news ↗
-          </Link>
-          <Link
-            href="/resources"
-            data-cursor-hover
-            className="interactive-ink font-mono text-[0.6rem] tracking-[0.18em] uppercase text-muted-foreground"
-          >
-            resources ↗
-          </Link>
-          <span className="font-mono text-[0.55rem] text-muted-foreground tracking-widest uppercase">built for builders</span>
-        </div>
-      </div>
-    </footer>
-  );
-}
+// SiteFooter component is now imported from "@/components/SiteFooter"

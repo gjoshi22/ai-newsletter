@@ -21,14 +21,14 @@ export function CustomCursor() {
   useEffect(() => {
     /* pointermove is more reliable than mousemove — fires on click-drag too */
     const move = (e: PointerEvent) => {
-      const target = e.target as HTMLElement;
-      const compactTarget = Boolean(target.closest("[data-cursor-compact]"));
+      const target = e.target instanceof Element ? e.target : null;
+      const compactTarget = Boolean(target?.closest("[data-cursor-compact]"));
       const hoverTarget = Boolean(
-        target.closest("a") ||
-        target.closest("button") ||
-        target.closest(".article-card") ||
-        target.closest(".featured-card") ||
-        target.closest("[data-cursor-hover]")
+        target?.closest("a") ||
+        target?.closest("button") ||
+        target?.closest(".article-card") ||
+        target?.closest(".featured-card") ||
+        target?.closest("[data-cursor-hover]")
       );
 
       mx.set(e.clientX);
@@ -83,8 +83,8 @@ export function CustomCursor() {
         }}
         animate={{
           opacity: visible ? 1 : 0,
-          width:  compact ? 20 : pressed ? 34 : hovered ? 48 : 22,
-          height: compact ? 20 : pressed ? 34 : hovered ? 48 : 22,
+          width:  compact ? 16 : pressed ? 30 : hovered ? 42 : 18,
+          height: compact ? 16 : pressed ? 30 : hovered ? 42 : 18,
           scale: pressed ? 0.92 : hovered ? 1.04 : 1,
         }}
         transition={{ opacity: { duration: 0.15 }, width: { duration: 0.18 }, height: { duration: 0.18 }, scale: { duration: 0.14 } }}

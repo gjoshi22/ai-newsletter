@@ -6,13 +6,11 @@ import { parseContentDate } from "@/lib/date";
 
 interface FeaturedCardProps {
   article: Article;
-  isSeen?: boolean;
-  onSeen?: () => void;
 }
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-export function FeaturedCard({ article, isSeen, onSeen }: FeaturedCardProps) {
+export function FeaturedCard({ article }: FeaturedCardProps) {
   const art  = getAsciiArt(article.asciiType);
   const d    = parseContentDate(article.date);
   const dateStr = `${MONTHS[d.getMonth()]} ${String(d.getDate()).padStart(2,"0")}, ${d.getFullYear()}`;
@@ -31,7 +29,6 @@ export function FeaturedCard({ article, isSeen, onSeen }: FeaturedCardProps) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-40px" }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        onViewportEnter={onSeen}
       >
         {/* Left — image or ASCII art */}
         <div
@@ -43,6 +40,8 @@ export function FeaturedCard({ article, isSeen, onSeen }: FeaturedCardProps) {
               src={article.image}
               alt={article.title}
               className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
           ) : (
             <div className="ascii-panel h-full">
@@ -121,14 +120,6 @@ export function FeaturedCard({ article, isSeen, onSeen }: FeaturedCardProps) {
               read article →
             </span>
             <span className="font-mono text-[0.6rem] text-muted-foreground tracking-widest uppercase">featured read</span>
-            {isSeen && (
-              <span
-                className="font-mono text-[0.55rem] tracking-[0.18em] uppercase select-none ml-auto"
-                style={{ color: "var(--neon)", opacity: 0.38 }}
-              >
-                [seen]
-              </span>
-            )}
           </motion.div>
         </div>
       </motion.article>

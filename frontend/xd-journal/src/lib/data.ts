@@ -16,10 +16,12 @@ export interface Article {
   asciiType: number;
   image?: string;
   tags?: string[];
-  status?: "draft" | "published";
+  status?: "draft" | "published" | "archived";
   body?: string;
   readingTime?: number;
   sourceUrl?: string;
+  authorName?: string;
+  showAuthor?: boolean;
 }
 
 const fallbackArticles: Article[] = [

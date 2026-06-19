@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ArticleCategory, ArticleSubCategory } from "@/lib/data";
 import { debugGame } from "@/lib/game-debug";
+import { scheduleIdleWork } from "@/lib/idle";
+import { DEV_SPRITE_PROFILE, loadSpriteSource } from "@/lib/sprite-transparency";
 
 type ModeGameToggleProps = {
   category: ArticleCategory;
@@ -117,7 +119,7 @@ const HUD_HEIGHT = 28;
 const TILE = 32;
 const GROUND_ROWS = 2;
 const ASSET_BASE = import.meta.env.BASE_URL;
-const ENEMY_PATH = `${ASSET_BASE}sprites/bumpy_single.png`;
+const ENEMY_PATH = `${ASSET_BASE}sprites/bumpy_single.webp`;
 const BUMPY_FRAME: SpriteRect = { x: 137, y: 61, w: 417, h: 433 };
 
 const TOOL_BOXES: Record<ArticleSubCategory, ToolLogo[]> = {
@@ -149,8 +151,8 @@ const MODE_COPY: Record<ArticleSubCategory, { title: string; token: string }> = 
 const LEVEL_UP_BOX: ToolLogo = { label: "LVL", full: "Level up", logo: "levelup", power: true };
 
 export const SPRITE_PATHS: Record<ArticleSubCategory, string> = {
-  Design: `${ASSET_BASE}sprites/sher-design-sprite.png`,
-  Development: `${ASSET_BASE}sprites/gj-dev-sprite.png`,
+  Design: `${ASSET_BASE}sprites/sher-design-sprite.webp`,
+  Development: `${ASSET_BASE}sprites/gj-dev-sprite.webp`,
 };
 
 const TOKEN_LOGO_PATHS: Record<string, string> = {
@@ -278,70 +280,6 @@ function rectsOverlap(a: { x: number; y: number; w: number; h: number }, b: { x:
 
 function hsl(value: string, alpha?: number) {
   return alpha === undefined ? `hsl(${value})` : `hsl(${value} / ${alpha})`;
-}
-
-export function makeTransparentSprite(image: HTMLImageElement): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth || image.width;
-  canvas.height = image.naturalHeight || image.height;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return canvas;
-
-  ctx.drawImage(image, 0, 0);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const { data } = imageData;
-  const totalPixels = canvas.width * canvas.height;
-  const background = new Uint8Array(totalPixels);
-  const queue = new Int32Array(totalPixels);
-  let head = 0;
-  let tail = 0;
-
-  const isBackgroundPixel = (pixelIndex: number) => {
-    const offset = pixelIndex * 4;
-    const alpha = data[offset + 3];
-    if (alpha < 18) return true;
-    const red = data[offset];
-    const green = data[offset + 1];
-    const blue = data[offset + 2];
-    const max = Math.max(red, green, blue);
-    const min = Math.min(red, green, blue);
-    return max - min < 18 && (min > 226 || (min > 86 && max < 236));
-  };
-
-  const enqueueBackground = (x: number, y: number) => {
-    const index = y * canvas.width + x;
-    if (background[index] || !isBackgroundPixel(index)) return;
-    background[index] = 1;
-    queue[tail] = index;
-    tail += 1;
-  };
-
-  for (let x = 0; x < canvas.width; x += 1) {
-    enqueueBackground(x, 0);
-    enqueueBackground(x, canvas.height - 1);
-  }
-  for (let y = 0; y < canvas.height; y += 1) {
-    enqueueBackground(0, y);
-    enqueueBackground(canvas.width - 1, y);
-  }
-
-  while (head < tail) {
-    const current = queue[head];
-    head += 1;
-    const x = current % canvas.width;
-    const y = Math.floor(current / canvas.width);
-    if (x > 0) enqueueBackground(x - 1, y);
-    if (x < canvas.width - 1) enqueueBackground(x + 1, y);
-    if (y > 0) enqueueBackground(x, y - 1);
-    if (y < canvas.height - 1) enqueueBackground(x, y + 1);
-  }
-
-  for (let index = 0; index < totalPixels; index += 1) {
-    if (background[index]) data[index * 4 + 3] = 0;
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-  return canvas;
 }
 
 function levelCode(stage: number) {
@@ -770,7 +708,7 @@ function damagePlayer(state: GameState) {
     player.w = size.w;
     player.h = size.h;
     player.hitbox = playerHitbox(player);
-    player.invulnerable = 2;
+    player.invulnerable = 1.3;
     state.message = "power down";
     return;
   }
@@ -784,6 +722,7 @@ function damagePlayer(state: GameState) {
     const lives = state.lives;
     resetStage(state, state.stage, false);
     state.lives = lives;
+    state.player.invulnerable = 2.5;
     state.running = true;
     state.message = "retry";
   }
@@ -1314,22 +1253,46 @@ export function ModeGameToggle({ category, activeMode, counts, onModeChange, sho
 
   useEffect(() => {
     if (!showGame) return;
+    let alive = true;
+    const cancelers: Array<() => void> = [];
     const images = {} as Record<ArticleSubCategory, HTMLImageElement>;
+
+    const commitSprite = (mode: ArticleSubCategory, image: HTMLImageElement, urgent: boolean) => {
+      const apply = () => {
+        if (!alive) return;
+        spriteRef.current[mode] = loadSpriteSource(image, mode === "Development" ? DEV_SPRITE_PROFILE : {});
+      };
+      if (urgent) apply();
+      else cancelers.push(scheduleIdleWork(apply));
+    };
+
     (["Design", "Development"] as ArticleSubCategory[]).forEach((mode) => {
       const image = new Image();
       image.src = SPRITE_PATHS[mode];
       images[mode] = image;
-      image.onload = () => { spriteRef.current[mode] = makeTransparentSprite(image); };
+      image.onload = () => commitSprite(mode, image, mode === activeMode);
       image.onerror = () => { spriteRef.current[mode] = null; };
     });
+
     const enemyImage = new Image();
     enemyImage.src = ENEMY_PATH;
-    enemyImage.onload = () => { enemySpriteRef.current = makeTransparentSprite(enemyImage); };
+    enemyImage.onload = () => {
+      cancelers.push(scheduleIdleWork(() => {
+        if (!alive) return;
+        enemySpriteRef.current = loadSpriteSource(enemyImage);
+      }));
+    };
     enemyImage.onerror = () => { enemySpriteRef.current = null; };
+
     const tokenImages = Object.entries(TOKEN_LOGO_PATHS).map(([logo, path]) => {
       const image = new Image();
       image.src = path;
-      image.onload = () => { tokenLogoRef.current = { ...tokenLogoRef.current, [logo]: image }; };
+      image.onload = () => {
+        cancelers.push(scheduleIdleWork(() => {
+          if (!alive) return;
+          tokenLogoRef.current = { ...tokenLogoRef.current, [logo]: image };
+        }));
+      };
       image.onerror = () => {
         const nextLogos = { ...tokenLogoRef.current };
         delete nextLogos[logo];
@@ -1337,13 +1300,16 @@ export function ModeGameToggle({ category, activeMode, counts, onModeChange, sho
       };
       return image;
     });
+
     return () => {
+      alive = false;
+      cancelers.forEach((cancel) => cancel());
       Object.values(images).forEach((image) => { image.onload = null; image.onerror = null; });
       enemyImage.onload = null;
       enemyImage.onerror = null;
       tokenImages.forEach((image) => { image.onload = null; image.onerror = null; });
     };
-  }, [showGame]);
+  }, [activeMode, showGame]);
 
   useEffect(() => { reset(activeMode); }, [activeMode, reset]);
 
@@ -1477,7 +1443,7 @@ export function ModeGameToggle({ category, activeMode, counts, onModeChange, sho
   if (!showGame) {
     return (
       <section className="mode-toggle-shell" aria-label={`${category} design and development selector`}>
-        <div className="mode-toggle-tabs" role="tablist" aria-label="Choose collection mode">
+        <div className="mode-toggle-tabs" data-mascot-avoid role="tablist" aria-label="Choose collection mode">
           {(["Design", "Development"] as ArticleSubCategory[]).map((mode) => {
             const active = activeMode === mode;
             return (
@@ -1512,7 +1478,7 @@ export function ModeGameToggle({ category, activeMode, counts, onModeChange, sho
           </p>
         </div>
         <div className="mode-game-controls">
-          <div className="mode-game-tabs" role="tablist" aria-label="Choose collection mode">
+          <div className="mode-game-tabs" data-mascot-avoid role="tablist" aria-label="Choose collection mode">
             {(["Design", "Development"] as ArticleSubCategory[]).map((mode) => (
               <button
                 key={mode}

@@ -14,56 +14,50 @@ const SPLASH_ASCII = `
 ╚═╝  ╚═╝╚═════╝     ╚═╝  ╚═╝╚═╝
 `;
 
-const STREAM_GLYPHS = ["01", "10", "AI", "XD", "//", "::", "[]", "<>", "++", "##"];
-const SIGNAL_STREAMS = Array.from({ length: 28 }, (_, column) => ({
-  left: `${(column * 17) % 100}%`,
-  delay: (column % 9) * 0.18,
-  duration: 3.8 + (column % 7) * 0.34,
-  opacity: 0.16 + (column % 5) * 0.024,
-  hoverX: ((column % 7) - 3) * 10,
-  hoverY: ((column % 5) - 2) * 8,
-  hoverRotate: ((column % 6) - 2.5) * 1.2,
-  glyphs: Array.from({ length: 18 }, (_, row) => STREAM_GLYPHS[(column * 3 + row * 2) % STREAM_GLYPHS.length]).join("\n"),
-}));
+const LOG_MESSAGES = [
+  { threshold: 8, text: "SYS // INIT KERNEL BOOT SEQUENCE... [OK]" },
+  { threshold: 24, text: "NET // UPLINK SYNAPSE BRIDGE... [CONNECTED]" },
+  { threshold: 42, text: "AI  // ALLOCATE NEURAL DENSE MEMORY... [OK]" },
+  { threshold: 60, text: "DB  // DECRYPT ARTICLE MANIFEST GRAPH... [OK]" },
+  { threshold: 78, text: "SEC // LOAD SHA-256 PARITY VERIFIERS... [OK]" },
+  { threshold: 92, text: "SYS // COGNITIVE CORE STEADY STATE. WELCOME." }
+];
 
 function getStatusText(progress: number) {
-  if (progress < 30) return "init environment...";
-  if (progress < 60) return "loading knowledge base...";
-  if (progress < 90) return "building neural index...";
-  return "ready.";
+  if (progress < 25) return "initializing core environment...";
+  if (progress < 55) return "fetching neural datasets...";
+  if (progress < 85) return "compiling dynamic indexes...";
+  return "uplink handshake complete.";
 }
 
 export function Splash({ onComplete }: SplashProps) {
   const [progress, setProgress] = useState(0);
   const [showTap, setShowTap] = useState(false);
   const [tapClick, setTapClick] = useState(false);
-  const [pointer, setPointer] = useState({ x: 0, y: 0, active: false });
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    const duration = prefersReducedMotion ? 900 : 2600;
+    const duration = prefersReducedMotion ? 900 : 2800;
     const interval = 16;
     const steps = duration / interval;
     let currentStep = 0;
-    let readyTimer: ReturnType<typeof setTimeout> | undefined;
 
     const timer = setInterval(() => {
       currentStep += 1;
       const elapsed = Math.min(currentStep / steps, 1);
-      const eased = 1 - Math.pow(1 - elapsed, 2.35);
+      const eased = 1 - Math.pow(1 - elapsed, 2.8);
       const nextProgress = currentStep >= steps ? 100 : Math.min(Math.floor(eased * 100), 99);
 
       setProgress(nextProgress);
 
       if (currentStep >= steps) {
         clearInterval(timer);
-        readyTimer = setTimeout(() => setShowTap(true), prefersReducedMotion ? 80 : 240);
+        setShowTap(true);
       }
     }, interval);
 
     return () => {
       clearInterval(timer);
-      if (readyTimer) clearTimeout(readyTimer);
     };
   }, [prefersReducedMotion]);
 
@@ -79,18 +73,9 @@ export function Splash({ onComplete }: SplashProps) {
     handleTap();
   };
 
-  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (prefersReducedMotion) return;
-    setPointer({
-      x: event.clientX / window.innerWidth - 0.5,
-      y: event.clientY / window.innerHeight - 0.5,
-      active: true,
-    });
-  };
-
   return (
     <motion.div
-      className="fixed inset-0 z-50 overflow-hidden bg-[#030303] text-white outline-none"
+      className="fixed inset-0 z-50 overflow-hidden bg-[#060606] text-white outline-none select-none"
       data-cursor-hover={showTap ? true : undefined}
       role={showTap ? "button" : "status"}
       tabIndex={showTap ? 0 : -1}
@@ -99,89 +84,112 @@ export function Splash({ onComplete }: SplashProps) {
       initial={{ opacity: 1 }}
       exit={{
         opacity: 0,
-        scale: prefersReducedMotion ? 1 : 1.025,
-        filter: prefersReducedMotion ? "none" : "blur(10px)",
+        scale: prefersReducedMotion ? 1 : 1.015,
+        filter: prefersReducedMotion ? "none" : "blur(12px)",
       }}
-      transition={{ duration: prefersReducedMotion ? 0.18 : 0.62, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: prefersReducedMotion ? 0.18 : 0.65, ease: [0.4, 0, 0.2, 1] }}
       onClick={showTap ? handleTap : undefined}
       onKeyDown={handleKeyDown}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={() => setPointer((current) => ({ ...current, active: false }))}
     >
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, transparent 0px, transparent 5px, rgba(255,255,255,0.2) 6px)",
-        }}
-      />
-
-      <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
-        {SIGNAL_STREAMS.map((stream, index) => (
-          <motion.pre
-            key={index}
-            className="absolute top-[-34%] font-mono text-[0.52rem] leading-4 text-[#FFE15A]"
-            style={{
-              left: stream.left,
-              opacity: pointer.active ? Math.min(stream.opacity + 0.1, 0.42) : stream.opacity,
-              x: pointer.active ? pointer.x * stream.hoverX : 0,
-              rotate: pointer.active ? pointer.y * stream.hoverRotate : 0,
-            }}
-            initial={{ y: "-18%" }}
-            animate={prefersReducedMotion ? undefined : { y: "170%" }}
-            transition={{
-              duration: stream.duration,
-              repeat: Infinity,
-              delay: stream.delay,
-              ease: "linear",
-            }}
-          >
-            {stream.glyphs}
-          </motion.pre>
-        ))}
+      {/* Top Telemetry Header */}
+      <div className="absolute top-0 left-0 right-0 p-8 flex justify-between items-start text-[0.55rem] font-mono tracking-[0.2em] text-[#FFE15A]/40 z-20">
+        <div className="flex items-center gap-3">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#FFE15A] animate-pulse" />
+          <span>SYS // COGNITIVE_NODE:01</span>
+        </div>
+        <div className="hidden sm:flex gap-8">
+          <span>MEM_ALLOC: {Math.floor(64 + progress * 0.32)}%</span>
+          <span>BAUD_RATE: 9600</span>
+          <span>NET_ROUTE: SECURE</span>
+        </div>
+        <div>
+          <span>UPLINK: {progress === 100 ? "READY" : "BOOTING"}</span>
+        </div>
       </div>
 
-      <div className="relative z-10 flex min-h-svh flex-col items-start justify-end p-8 md:p-14">
-        <AnimatedAsciiLogo reducedMotion={prefersReducedMotion} />
+      <div className="relative z-10 flex min-h-svh flex-col items-start justify-between p-8 md:p-14 pt-20 w-full">
+        
+        {/* Upper HUD Console - System Logs */}
+        <div className="w-full max-w-[460px] bg-[#0b0b0b] border border-[#FFE15A]/15 p-4 font-mono text-[0.52rem] text-[#FFE15A]/70 flex flex-col gap-2 rounded-sm shadow-2xl mt-4">
+          <div className="flex items-center justify-between border-b border-[#FFE15A]/15 pb-2 mb-1">
+            <span className="text-[#FFE15A]/90 font-bold uppercase tracking-widest text-[0.56rem]">BOOT DIAGNOSTICS</span>
+            <span className="animate-pulse text-[#FFE15A] flex items-center gap-1.5">
+              <span className="inline-block w-1 h-1 rounded-full bg-green-500" />
+              ONLINE
+            </span>
+          </div>
+          <div className="space-y-1.5 min-h-[92px] flex flex-col justify-end">
+            {LOG_MESSAGES.map((msg, i) => {
+              const isVisible = progress >= msg.threshold;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -5 }}
+                  animate={{ opacity: isVisible ? 1 : 0, x: isVisible ? 0 : -5 }}
+                  transition={{ duration: 0.25 }}
+                  className={`flex items-center gap-2.5 ${isVisible ? 'flex' : 'hidden'}`}
+                >
+                  <span className="text-zinc-500">[{msg.threshold}%]</span>
+                  <span className={msg.threshold === 92 ? "text-green-400 font-bold" : ""}>
+                    {msg.text}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
 
-        <motion.div
-          className="relative select-none font-sans font-black leading-none"
-          style={{
-            fontFamily: '"Inter", "Arial Black", "Helvetica Neue", Arial, sans-serif',
-            fontSize: "clamp(4.7rem, 24vw, 20rem)",
-            letterSpacing: 0,
-          }}
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {String(progress).padStart(3, "0")}
-          <span className="align-top font-mono text-[0.19em] font-bold text-zinc-500">%</span>
-        </motion.div>
+        {/* Lower Content: Logo, percentage loader, status */}
+        <div className="w-full mt-auto">
+          <AnimatedAsciiLogo reducedMotion={prefersReducedMotion} />
 
-        <div className="mt-5 grid w-full gap-3">
-          <div className="relative h-px overflow-hidden bg-zinc-800">
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage:
-                  "repeating-linear-gradient(115deg, transparent 0px, transparent 11px, rgba(255,255,255,0.36) 12px, rgba(255,255,255,0.36) 13px)",
-              }}
-            />
+          <div className="flex items-baseline gap-4 mt-2">
+            {/* Glowing Big Percentage in Monospace */}
             <motion.div
-              className="relative h-full bg-white"
-              style={{ width: `${progress}%` }}
-              transition={{ ease: "linear", duration: 0.05 }}
-            />
+              className="relative select-none font-bold leading-none text-white"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: "clamp(4.2rem, 16vw, 11rem)",
+                letterSpacing: "-0.04em",
+                textShadow: "0 0 35px rgba(255, 225, 90, 0.1)",
+              }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {String(progress).padStart(3, "0")}
+              <span className="align-top font-mono text-[0.2em] font-bold text-[#FFE15A]/40">%</span>
+            </motion.div>
           </div>
 
-          <div className="flex w-full flex-wrap items-center justify-between gap-3 font-mono text-[0.62rem] uppercase tracking-widest text-zinc-500">
-            <span>{getStatusText(progress)}</span>
-            {showTap ? (
-              <AnimatedTap show={showTap} tapped={tapClick} reducedMotion={prefersReducedMotion} />
-            ) : (
-              <span>{progress}%</span>
-            )}
+          {/* High-tech Segmented Loader Grid */}
+          <div className="mt-4 grid w-full gap-4">
+            <div className="flex gap-1.5 h-2.5 items-center">
+              {Array.from({ length: 25 }).map((_, i) => {
+                const active = progress >= (i + 1) * 4;
+                return (
+                  <div
+                    key={i}
+                    className="flex-1 h-full rounded-[1px] transition-all duration-300"
+                    style={{
+                      backgroundColor: active ? "#FFE15A" : "rgba(255,225,90,0.04)",
+                      border: active ? "1px solid #FFE15A" : "1px solid rgba(255,225,90,0.06)",
+                      boxShadow: active ? "0 0 8px rgba(255, 225, 90, 0.5), 0 0 15px rgba(255, 225, 90, 0.2)" : "none",
+                      opacity: active ? 1 : 0.4
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="flex w-full flex-wrap items-center justify-between gap-3 font-mono text-[0.62rem] uppercase tracking-widest text-zinc-500">
+              <span className="text-zinc-400">{getStatusText(progress)}</span>
+              {showTap ? (
+                <AnimatedTap show={showTap} tapped={tapClick} reducedMotion={prefersReducedMotion} />
+              ) : (
+                <span className="text-[#FFE15A] font-bold">{progress}%</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -253,8 +261,8 @@ function AnimatedAsciiLogo({ reducedMotion }: { reducedMotion: boolean | null })
                   rotate: force ? ((seed % 13) - 6) * 2.2 * force : 0,
                   scale: force ? 1 + 0.18 * force : 1,
                   opacity: isTile ? 0.74 + 0.26 * influence : 1,
-                  color: force > 0.12 ? "#ffffff" : "rgba(255,255,255,0.78)",
-                  textShadow: force > 0.12 ? "0 0 12px rgba(255,255,255,0.34)" : "0 0 0 rgba(255,255,255,0)",
+                  color: force > 0.12 ? "#FFE15A" : "rgba(255,255,255,0.78)",
+                  textShadow: force > 0.12 ? "0 0 15px rgba(255,225,90,0.6)" : "0 0 0 rgba(255,255,255,0)",
                 }}
                 transition={{ type: "spring", stiffness: 430, damping: 20, mass: 0.28 }}
               >
@@ -281,16 +289,36 @@ function AnimatedTap({
 
   return (
     <motion.span
-      className="border border-[#65D3FF]/50 bg-[#65D3FF]/10 px-4 py-2 font-mono text-[0.64rem] uppercase text-[#65D3FF]"
-      initial={{ opacity: 0, y: 8 }}
+      className="relative overflow-hidden border border-[#FFE15A] bg-[#FFE15A]/10 px-5 py-2.5 font-mono text-[0.68rem] font-bold uppercase text-[#FFE15A] tracking-[0.2em] shadow-[0_0_15px_rgba(255,225,90,0.25)] rounded-sm cursor-pointer"
+      initial={{ opacity: 0, y: 10 }}
       animate={{
-        opacity: tapped ? 0 : reducedMotion ? 1 : [0, 1, 0.66, 1],
-        y: tapped ? -8 : 0,
-        scale: tapped ? 0.96 : 1,
+        opacity: tapped ? 0 : 1,
+        y: tapped ? -10 : 0,
+        boxShadow: tapped 
+          ? "0 0 0px rgba(255,225,90,0)" 
+          : ["0 0 10px rgba(255,225,90,0.2)", "0 0 20px rgba(255,225,90,0.5)", "0 0 10px rgba(255,225,90,0.2)"],
       }}
-      transition={tapped ? { duration: 0.18 } : { duration: 1.25, repeat: reducedMotion ? 0 : Infinity }}
+      transition={
+        tapped 
+          ? { duration: 0.2 } 
+          : { 
+              opacity: { duration: 0.4 },
+              y: { duration: 0.4 },
+              boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+            }
+      }
     >
-      tap to enter
+      {/* Gliding scanline indicator inside button */}
+      <motion.div 
+        className="absolute inset-0 bg-[#FFE15A]/10 pointer-events-none"
+        style={{ height: "40%", top: 0, opacity: 0.6 }}
+        animate={reducedMotion ? undefined : { y: ["0%", "250%"] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+      />
+      <span className="relative z-10 flex items-center gap-2">
+        <span className="text-neon inline-block animate-[pulse_1s_infinite]">▶</span>
+        CLICK TO ENTER
+      </span>
     </motion.span>
   );
 }

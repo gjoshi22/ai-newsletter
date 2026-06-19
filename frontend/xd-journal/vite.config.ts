@@ -69,6 +69,20 @@ export default defineConfig(async ({ command }) => {
   build: {
     outDir: path.resolve(appRoot, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            if (id.includes("ModeGameToggle") || id.includes("MascotGameLauncher")) return "game";
+            return undefined;
+          }
+          if (id.includes("framer-motion")) return "vendor-motion";
+          if (id.includes("@tanstack/react-query")) return "vendor-query";
+          if (id.includes("react-dom") || id.includes("/react/")) return "vendor-react";
+          return undefined;
+        },
+      },
+    },
   },
   server: {
     port,
@@ -77,6 +91,16 @@ export default defineConfig(async ({ command }) => {
     allowedHosts: true,
     fs: {
       strict: true,
+    },
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/uploads": {
+        target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:4000",
+        changeOrigin: true,
+      },
     },
   },
   preview: {

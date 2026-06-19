@@ -7,13 +7,11 @@ import { parseContentDate } from "@/lib/date";
 interface AsciiCardProps {
   article: Article;
   index: number;
-  isSeen?: boolean;
-  onSeen?: () => void;
 }
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-export function AsciiCard({ article, index, isSeen, onSeen }: AsciiCardProps) {
+export function AsciiCard({ article, index }: AsciiCardProps) {
   const d = parseContentDate(article.date);
   const dateStr = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   const num = String(index + 1).padStart(2, "0");
@@ -51,7 +49,6 @@ export function AsciiCard({ article, index, isSeen, onSeen }: AsciiCardProps) {
         delay: Math.min(index * 0.07, 0.35),
         ease: [0.22, 1, 0.36, 1],
       }}
-      onViewportEnter={onSeen}
     >
       <Link
         href={articleHref}
@@ -84,6 +81,8 @@ export function AsciiCard({ article, index, isSeen, onSeen }: AsciiCardProps) {
                 alt={article.title}
                 className="w-full h-full object-cover"
                 style={{ minHeight: 160, display: "block" }}
+                loading="lazy"
+                decoding="async"
               />
             ) : (
               /* Placeholder: category label */
@@ -156,18 +155,8 @@ export function AsciiCard({ article, index, isSeen, onSeen }: AsciiCardProps) {
               <span className="font-mono text-[0.6rem] tracking-[0.16em] uppercase text-muted-foreground">
                 {article.category}
               </span>
-              <span className="font-mono text-[0.65rem] tracking-wide transition-all duration-200 flex items-center gap-2">
-                {isSeen && (
-                  <span
-                    className="font-mono text-[0.55rem] tracking-[0.18em] uppercase select-none"
-                    style={{ color: "var(--neon)", opacity: 0.38 }}
-                  >
-                    [seen]
-                  </span>
-                )}
-                <span className="text-neon opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  read →
-                </span>
+              <span className="font-mono text-[0.65rem] tracking-wide text-neon opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                read →
               </span>
             </div>
           </div>

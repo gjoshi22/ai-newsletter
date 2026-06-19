@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { AsciiExperience } from "@/components/AsciiExperience";
 import { Navigation } from "@/components/Navigation";
-import { CustomCursor } from "@/components/CustomCursor";
-import { articles } from "@/lib/data";
+import { DeferredCustomCursor } from "@/components/DeferredCustomCursor";
+import { useArchiveArticles } from "@/hooks/useArchiveArticles";
+import type { Article } from "@/lib/data";
 import { getContentDateTime, parseContentDate } from "@/lib/date";
 
-function simpleSearch(query: string, items: typeof articles) {
+function simpleSearch(query: string, items: Article[]) {
   if (!query.trim()) return items;
   const q = query.toLowerCase();
   return items.filter(
@@ -19,10 +20,10 @@ function simpleSearch(query: string, items: typeof articles) {
   );
 }
 
-type GroupedArticles = { year: string; months: { month: string; items: typeof articles }[] }[];
+type GroupedArticles = { year: string; months: { month: string; items: Article[] }[] }[];
 
-function groupByYearMonth(items: typeof articles): GroupedArticles {
-  const map = new Map<string, Map<string, typeof articles>>();
+function groupByYearMonth(items: Article[]): GroupedArticles {
+  const map = new Map<string, Map<string, Article[]>>();
   for (const a of items) {
     const d = parseContentDate(a.date);
     const year  = d.getFullYear().toString();
@@ -48,17 +49,18 @@ function groupByYearMonth(items: typeof articles): GroupedArticles {
 
 export default function Archive() {
   const [query, setQuery] = useState("");
+  const { data: articles = [] } = useArchiveArticles();
 
   const allArticles = useMemo(() => [...articles].sort(
-    (a, b) => getContentDateTime(b.date) - getContentDateTime(a.date)
-  ), []);
+    (a, b) => getContentDateTime(b.date) - getContentDateTime(a.date),
+  ), [articles]);
 
   const results = useMemo(() => simpleSearch(query, allArticles), [query, allArticles]);
   const grouped = useMemo(() => groupByYearMonth(results), [results]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <CustomCursor />
+      <DeferredCustomCursor />
       <Navigation />
 
       {/* ── Header ── */}

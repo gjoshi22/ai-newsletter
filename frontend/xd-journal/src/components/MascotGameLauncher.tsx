@@ -17,7 +17,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  makeTransparentSprite,
   ModeGameToggle,
   POSE_FRAMES_BY_MODE,
   SPRITE_PATHS,
@@ -26,6 +25,8 @@ import {
   type WalkDirection,
 } from "@/components/ModeGameToggle";
 import { debugGame } from "@/lib/game-debug";
+import { scheduleIdleWork } from "@/lib/idle";
+import { DEV_SPRITE_PROFILE, loadSpriteSource } from "@/lib/sprite-transparency";
 
 type MascotGameLauncherProps = {
   category: ArticleCategory;
@@ -69,11 +70,17 @@ const DIRECTION_SWITCH_MIN_SPEED = 1.4;
 const SAME_AXIS_DIRECTION_HOLD_MS = 110;
 const CROSS_AXIS_DIRECTION_HOLD_MS = 170;
 const TURN_SETTLE_MS = 95;
-const MAX_FOLLOW_STEP = 24;
+/* Spring-damper motion (per-frame constants at 60fps, dt-normalized in tick) */
+const FOLLOW_SPRING = 0.012;
+const FOLLOW_DAMPING = 0.84;
+const MAX_FOLLOW_SPEED = 17;
+const DRAG_SPRING = 0.36;
+const DRAG_DAMPING = 0.55;
+const REST_DAMPING = 0.88;
 const WALK_FRAME_MS = 86;
 const FLOAT_FRAME_MS = 118;
 const GAME_KEYS = new Set([" ", "arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "k", "shift", "j"]);
-const CONTROL_AVOID_SELECTOR = ".mascot-preference-control";
+const CONTROL_AVOID_SELECTOR = "[data-mascot-avoid]";
 
 function distance(x: number, y: number) {
   return Math.hypot(x, y);
@@ -343,6 +350,8 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
   const followIntentUntilRef = useRef(0);
   const posRef = useRef({ x: -220, y: -220 });
   const lastPosRef = useRef({ x: -220, y: -220 });
+  const mascotVelocityRef = useRef({ x: 0, y: 0 });
+  const lastTickTimeRef = useRef(0);
   const visualVelocityRef = useRef({ x: 0, y: 0 });
   const facingLeftRef = useRef(false);
   const lastFacingFlipRef = useRef(0);
@@ -434,6 +443,7 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
     );
     posRef.current = seeded;
     lastPosRef.current = seeded;
+    mascotVelocityRef.current = { x: 0, y: 0 };
     visualVelocityRef.current = { x: 0, y: 0 };
     cursorVelocityRef.current = { x: 0, y: 0 };
     followIntentUntilRef.current = 0;
@@ -517,14 +527,21 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
-    const images = (Object.keys(SPRITE_PATHS) as ArticleSubCategory[]).map((mode) => {
+    const cancelers: Array<() => void> = [];
+
+    const loadSprite = (mode: ArticleSubCategory, urgent: boolean) => {
       const image = new Image();
       image.src = SPRITE_PATHS[mode];
-      image.onload = () => {
+      const commit = () => {
         if (!alive) return;
-        const sprite = makeTransparentSprite(image);
+        const sprite = loadSpriteSource(image, mode === "Development" ? DEV_SPRITE_PROFILE : {});
         spriteCacheRef.current[mode] = sprite;
         if (activeModeRef.current === mode) spriteRef.current = sprite;
+      };
+      image.onload = () => {
+        if (!alive) return;
+        if (urgent) commit();
+        else cancelers.push(scheduleIdleWork(commit));
       };
       image.onerror = () => {
         if (!alive) return;
@@ -532,9 +549,15 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
         if (activeModeRef.current === mode) spriteRef.current = null;
       };
       return image;
-    });
+    };
+
+    const active = activeModeRef.current;
+    const inactive: ArticleSubCategory = active === "Design" ? "Development" : "Design";
+    const images = [loadSprite(active, true), loadSprite(inactive, false)];
+
     return () => {
       alive = false;
+      cancelers.forEach((cancel) => cancel());
       images.forEach((image) => {
         image.onload = null;
         image.onerror = null;
@@ -762,6 +785,8 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const tick = (time: number) => {
+      const dtScale = clamp((time - (lastTickTimeRef.current || time - 16.7)) / 16.667, 0.5, 2.5);
+      lastTickTimeRef.current = time;
       if (!hasPositionRef.current) {
         shell.style.opacity = "0";
         shell.style.pointerEvents = "none";
@@ -821,38 +846,52 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
       );
       followingRef.current = shouldFollow && !draggingRef.current;
       const shouldRest = isLocked || !shouldFollow;
-      const rawTarget = draggingRef.current
-        ? {
-            x: cursor.x - dragOffsetRef.current.x,
-            y: cursor.y - dragOffsetRef.current.y,
-          }
-        : shouldRest
-          ? { x: pos.x, y: pos.y }
+      const vel = mascotVelocityRef.current;
+
+      if (draggingRef.current || !shouldRest) {
+        const rawTarget = draggingRef.current
+          ? {
+              x: cursor.x - dragOffsetRef.current.x,
+              y: cursor.y - dragOffsetRef.current.y,
+            }
           : leashTarget;
-      const target = keepAwayFromControls(rawTarget, avoidRectsRef.current);
-      const targetDx = target.x - pos.x;
-      const targetDy = target.y - pos.y;
-      const targetDistance = distance(targetDx, targetDy);
-      const follow = draggingRef.current ? 1 : clamp(targetDistance / 920, 0.055, 0.18);
-      const desiredMoveX = targetDx * follow;
-      const desiredMoveY = targetDy * follow;
-      const desiredMoveDistance = distance(desiredMoveX, desiredMoveY);
-      const moveLimit = draggingRef.current ? desiredMoveDistance : MAX_FOLLOW_STEP;
-      const moveScale = desiredMoveDistance > moveLimit && desiredMoveDistance > 0
-        ? moveLimit / desiredMoveDistance
-        : 1;
-      const moveX = desiredMoveX * moveScale;
-      const moveY = desiredMoveY * moveScale;
-      pos.x += moveX;
-      pos.y += moveY;
+        const target = keepAwayFromControls(rawTarget, avoidRectsRef.current);
+        const spring = draggingRef.current ? DRAG_SPRING : FOLLOW_SPRING;
+        const damping = draggingRef.current ? DRAG_DAMPING : FOLLOW_DAMPING;
+        vel.x += (target.x - pos.x) * spring * dtScale;
+        vel.y += (target.y - pos.y) * spring * dtScale;
+        vel.x *= Math.pow(damping, dtScale);
+        vel.y *= Math.pow(damping, dtScale);
+        if (!draggingRef.current) {
+          const followSpeed = distance(vel.x, vel.y);
+          if (followSpeed > MAX_FOLLOW_SPEED) {
+            vel.x *= MAX_FOLLOW_SPEED / followSpeed;
+            vel.y *= MAX_FOLLOW_SPEED / followSpeed;
+          }
+        }
+      } else {
+        /* resting or just released: glide out the remaining momentum */
+        vel.x *= Math.pow(REST_DAMPING, dtScale);
+        vel.y *= Math.pow(REST_DAMPING, dtScale);
+        if (Math.abs(vel.x) < 0.015) vel.x = 0;
+        if (Math.abs(vel.y) < 0.015) vel.y = 0;
+      }
+
+      pos.x += vel.x * dtScale;
+      pos.y += vel.y * dtScale;
+      const constrained = keepAwayFromControls({ x: pos.x, y: pos.y }, avoidRectsRef.current);
+      if (constrained.x !== pos.x) vel.x = 0;
+      if (constrained.y !== pos.y) vel.y = 0;
+      pos.x = constrained.x;
+      pos.y = constrained.y;
 
       const dx = pos.x - lastPosRef.current.x;
       const dy = pos.y - lastPosRef.current.y;
       const speed = Math.hypot(dx, dy);
-      const measuredDx = shouldFollow ? moveX : 0;
-      const measuredDy = shouldFollow ? moveY : 0;
-      const velocityEase = draggingRef.current ? 0.62 : 0.18;
-      if (shouldFollow || targetDistance > 2.4) {
+      const measuredDx = dx;
+      const measuredDy = dy;
+      const velocityEase = draggingRef.current ? 0.62 : 0.24;
+      if (speed > 0.4) {
         motionActiveUntilRef.current = time + MOTION_ACTIVE_HOLD_MS;
       }
       visualVelocityRef.current = {
@@ -912,13 +951,14 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
       const shellX = pos.x - CANVAS_W / 2;
       const shellY = pos.y - CANVAS_H / 2;
       const avoidingControls = rectIntersectsAvoidZone(shellX, shellY, CANVAS_W, CANVAS_H, avoidRectsRef.current);
+      const cursorOverControls = pointInAvoidZone(cursor.x, cursor.y, avoidRectsRef.current);
 
-      const mascotVisible = !openRef.current && !avoidingControls && (isLocked || cursor.active);
+      const mascotVisible = !openRef.current && !avoidingControls && !cursorOverControls && (isLocked || cursor.active);
       shell.style.opacity = mascotVisible ? "1" : "0";
-      shell.style.pointerEvents = openRef.current || avoidingControls ? "none" : "auto";
+      shell.style.pointerEvents = openRef.current || avoidingControls || cursorOverControls ? "none" : "auto";
       shell.style.transform = `translate3d(${shellX}px, ${shellY}px, 0)`;
       if (lockControl) {
-        const lockVisible = !openRef.current && !avoidingControls && (lockControlVisibleRef.current || draggingRef.current);
+        const lockVisible = !openRef.current && !avoidingControls && !cursorOverControls && (lockControlVisibleRef.current || draggingRef.current);
         lockControl.style.opacity = lockVisible ? "1" : "0";
         lockControl.style.pointerEvents = lockVisible ? "auto" : "none";
         lockControl.style.transform = `translate3d(${shellX + 90}px, ${shellY + 10}px, 0)`;
@@ -1007,9 +1047,6 @@ export function MascotGameLauncher({ category, activeMode, counts, onModeChange 
         }}
       >
         <canvas ref={canvasRef} />
-        <div className="mascot-launcher-hint">
-          {activeMode === "Design" ? "design" : "dev"}
-        </div>
       </button>
 
       <button

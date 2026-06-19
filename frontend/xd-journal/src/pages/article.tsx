@@ -1,10 +1,12 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useParams } from "wouter";
 import { motion, useScroll, useSpring } from "framer-motion";
 import { AsciiExperience } from "@/components/AsciiExperience";
 import { Navigation } from "@/components/Navigation";
-import { CustomCursor } from "@/components/CustomCursor";
-import { articles, type Article } from "@/lib/data";
+import { DeferredCustomCursor } from "@/components/DeferredCustomCursor";
+import { SiteFooter } from "@/components/SiteFooter";
+import { ArticleBody, ArticleDeck, ArticleImageStage } from "@/components/ArticleBody";
+import { usePublishedArticle, usePublishedArticles } from "@/hooks/usePublishedArticles";
 import { parseContentDate } from "@/lib/date";
 
 function formatDate(date: string) {
@@ -21,144 +23,12 @@ function ScrollProgress() {
   return <motion.div className="scroll-progress" style={{ scaleX }} />;
 }
 
-function inlineMarkdown(text: string) {
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*)/g);
-  return parts.map((part, index) => {
-    const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (link) {
-      return (
-        <a key={index} href={link[2]} target="_blank" rel="noreferrer">
-          {link[1]}
-        </a>
-      );
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return <code key={index}>{part.slice(1, -1)}</code>;
-    }
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
-    }
-    return part;
-  });
-}
-
-function MarkdownBody({ body }: { body: string }) {
-  const lines = body.split("\n");
-  const nodes = [];
-  let paragraph: string[] = [];
-  let list: string[] = [];
-  let code: string[] = [];
-  let inCode = false;
-
-  const flushParagraph = () => {
-    if (!paragraph.length) return;
-    nodes.push(<p key={`p-${nodes.length}`}>{inlineMarkdown(paragraph.join(" "))}</p>);
-    paragraph = [];
-  };
-  const flushList = () => {
-    if (!list.length) return;
-    nodes.push(
-      <ul key={`ul-${nodes.length}`}>
-        {list.map((item, index) => <li key={index}>{inlineMarkdown(item)}</li>)}
-      </ul>,
-    );
-    list = [];
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (trimmed.startsWith("```")) {
-      if (inCode) {
-        nodes.push(<pre key={`code-${nodes.length}`}><code>{code.join("\n")}</code></pre>);
-        code = [];
-        inCode = false;
-      } else {
-        flushParagraph();
-        flushList();
-        inCode = true;
-      }
-      continue;
-    }
-
-    if (inCode) {
-      code.push(line);
-      continue;
-    }
-
-    if (!trimmed) {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-
-    if (trimmed.startsWith("### ")) {
-      flushParagraph();
-      flushList();
-      nodes.push(<h3 key={`h3-${nodes.length}`}>{inlineMarkdown(trimmed.slice(4))}</h3>);
-      continue;
-    }
-
-    if (trimmed.startsWith("## ")) {
-      flushParagraph();
-      flushList();
-      nodes.push(<h2 key={`h2-${nodes.length}`}>{inlineMarkdown(trimmed.slice(3))}</h2>);
-      continue;
-    }
-
-    if (trimmed.startsWith("> ")) {
-      flushParagraph();
-      flushList();
-      paragraph.push(trimmed.slice(2));
-      continue;
-    }
-
-    if (trimmed.startsWith("- ")) {
-      flushParagraph();
-      list.push(trimmed.slice(2));
-      continue;
-    }
-
-    paragraph.push(trimmed);
-  }
-
-  flushParagraph();
-  flushList();
-
-  return <div className="article-prose">{nodes}</div>;
-}
-
-function ArticleImageStage({ article }: { article: Article }) {
-  if (article.image) {
-    return (
-      <figure className="article-image-stage">
-        <img src={article.image} alt="" />
-        <figcaption>{article.category} :: {article.subCategory} visual reference</figcaption>
-      </figure>
-    );
-  }
-
-  const words = article.title.split(/\s+/).filter(Boolean).slice(0, 6);
-  return (
-    <figure className="article-image-stage article-image-stage-fallback" aria-label={`${article.title} visual reference`}>
-      <div className="article-image-glyphs" aria-hidden="true">
-        {words.map((word, index) => (
-          <span key={`${word}-${index}`} style={{ "--i": index } as CSSProperties}>
-            {word}
-          </span>
-        ))}
-      </div>
-      <div className="article-image-orbit" aria-hidden="true" />
-      <figcaption>{article.category} :: {article.subCategory} generated field image</figcaption>
-    </figure>
-  );
-}
-
 export default function ArticlePage() {
   const { slug } = useParams<{ slug: string }>();
-  const article = articles.find((item) => item.slug === slug);
+  const { data: article, isLoading } = usePublishedArticle(slug);
+  const { data: allArticles = [] } = usePublishedArticles();
   const experienceGridRef = useRef<HTMLElement>(null);
-  const related = articles
+  const related = allArticles
     .filter((item) => item.slug !== article?.slug && item.category === article?.category)
     .slice(0, 3);
 
@@ -181,10 +51,14 @@ export default function ArticlePage() {
     };
   }, [article]);
 
+  if (isLoading) {
+    return null;
+  }
+
   if (!article) {
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <CustomCursor />
+        <DeferredCustomCursor />
         <ScrollProgress />
         <Navigation />
         <main className="relative max-w-[900px] mx-auto px-6 md:px-12 pt-32">
@@ -200,7 +74,7 @@ export default function ArticlePage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <CustomCursor />
+      <DeferredCustomCursor />
       <ScrollProgress />
       <Navigation />
 
@@ -236,7 +110,7 @@ export default function ArticlePage() {
                   {article.title}
                 </h1>
                 <p className="article-page-deck">
-                  {article.excerpt}
+                  <ArticleDeck text={article.excerpt} />
                 </p>
               </div>
             </div>
@@ -250,6 +124,12 @@ export default function ArticlePage() {
                 <span>discipline</span>
                 <strong>{article.subCategory}</strong>
               </div>
+              {article.showAuthor && article.authorName ? (
+                <div>
+                  <span>author</span>
+                  <strong>{article.authorName}</strong>
+                </div>
+              ) : null}
             </div>
           </motion.div>
         </header>
@@ -260,9 +140,14 @@ export default function ArticlePage() {
               <span>Article body</span>
               <span>{article.readingTime ? `${article.readingTime} min read` : "ready"}</span>
             </div>
-            <ArticleImageStage article={article} />
+            <ArticleImageStage
+              title={article.title}
+              category={article.category}
+              subCategory={article.subCategory}
+              image={article.image}
+            />
             <div className="p-6 md:p-10">
-              <MarkdownBody body={article.body ?? ""} />
+              <ArticleBody body={article.body ?? ""} />
             </div>
 
             <footer className="border-t border-border p-6 md:px-10 flex flex-wrap items-center gap-5 justify-between">
@@ -327,6 +212,7 @@ export default function ArticlePage() {
           </aside>
         </main>
       </article>
+      <SiteFooter />
     </div>
   );
 }

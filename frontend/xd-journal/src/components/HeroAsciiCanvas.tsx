@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
+import { scheduleIdleWork } from "@/lib/idle";
 
 /* ═══════════════════════════════════════════════════════════════════
    Hero ASCII — canvas-sampled particle physics
@@ -22,21 +23,28 @@ const HERO_LINES: HeroAsciiLine[] = [
 const ASCII_RAMP = " .:-=+*#%@";
 const ACTIVE_RAMP = "01<>/\\[]{}$#@";
 const SAMPLE_STEP = 5;   /* px — grid sampling of the offscreen text */
+/* Particles are laid out once at this width, then the whole canvas is scaled
+   to the container, so glyph spacing/proportions are identical at every viewport. */
+const REF_WIDTH = 1440;
 const SOURCE_CHAR_TUNING: Partial<Record<string, { strokeScale: number; fillOffsets?: number[]; advanceScale?: number }>> = {
   X: { strokeScale: 0.40, fillOffsets: [-0.18, 0.24], advanceScale: 0.32 },
-  R: { strokeScale: 0.36, fillOffsets: [-0.24, 0.32], advanceScale: 0.36 },
   N: { strokeScale: 0.30, fillOffsets: [-0.16, 0.24], advanceScale: 0.30 },
 };
 
 /* ── Physics ── */
 const REPEL_RADIUS = 72;
+const REPEL_RADIUS_SQ = REPEL_RADIUS * REPEL_RADIUS;
 const REPEL_FORCE  = 5800;
 const SPRING_K     = 0.055;
 const DAMPING      = 0.82;
 const MIN_DIST     = 6;
+const ENERGY_GLOW  = 0.07;
+const ENERGY_ACTIVE = 0.18;
 
 interface Particle {
   char: string;
+  activeChar: string;
+  rgba: string;
   homeX: number;
   homeY: number;
   x: number;
@@ -55,6 +63,10 @@ function pickGlyph(x: number, y: number, shade: number, active = false) {
     Math.max(0, Math.floor((shade * 0.82 + jitter * 0.18) * ramp.length)),
   );
   return ramp[index];
+}
+
+function particleRgba(shade: number, neonRgb: string) {
+  return `rgba(${neonRgb},${Math.min(0.58 + shade * 0.38, 1)})`;
 }
 
 function measureTrackedText(ctx: CanvasRenderingContext2D, text: string, tracking: number) {
@@ -92,7 +104,11 @@ function fillTrackedText(ctx: CanvasRenderingContext2D, text: string, tracking: 
 }
 
 /* ── Build particle set by sampling offscreen canvas ── */
-function buildParticles(cW: number, lines: HeroAsciiLine[]): { particles: Particle[]; height: number } {
+function buildParticles(
+  cW: number,
+  lines: HeroAsciiLine[],
+  neonRgb: string,
+): { particles: Particle[]; height: number } {
   const oc  = document.createElement("canvas");
   const ctx = oc.getContext("2d");
   if (!ctx || !cW) return { particles: [], height: 0 };
@@ -156,6 +172,8 @@ function buildParticles(cW: number, lines: HeroAsciiLine[]): { particles: Partic
         const shade = alpha / 255;
         particles.push({
           char: pickGlyph(x, y, shade),
+          activeChar: pickGlyph(x, y, 1, true),
+          rgba: particleRgba(shade, neonRgb),
           homeX: x, homeY: y,
           x: x, y: y,
           vx: 0, vy: 0, energy: 0,
@@ -179,75 +197,99 @@ export function HeroAsciiCanvas({ lines = HERO_LINES, ariaLabel, className = "" 
   const wrapRef   = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef  = useRef({ x: -9999, y: -9999 });
+  const hoverRef  = useRef(false);
   const pRef      = useRef<Particle[]>([]);
   const rafRef    = useRef<number | null>(null);
-  const sizeRef   = useRef({ width: 0, height: 0, dpr: 1 });
+  const lastTimeRef = useRef<number | null>(null);
+  const sizeRef   = useRef({ width: 0, height: 0, dpr: 1, scale: 1 });
+  const refHeightRef = useRef(0);
+  const builtForLinesRef = useRef<HeroAsciiLine[] | null>(null);
+  const colorsRef = useRef({ neonHex: "#3D2400", neonRgb: "61,36,0" });
 
-  const tick = useCallback(() => {
+  const syncColors = useCallback(() => {
+    if (typeof document === "undefined") return;
+    const css = getComputedStyle(document.documentElement);
+    const neonHex = css.getPropertyValue("--neon").trim() || "#3D2400";
+    const neonRgb = css.getPropertyValue("--neon-rgb").trim() || "61,36,0";
+    colorsRef.current = { neonHex, neonRgb };
+    for (const p of pRef.current) {
+      p.rgba = particleRgba(p.shade, neonRgb);
+    }
+  }, []);
+
+  const tick = useCallback((time: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const { width, height, dpr } = sizeRef.current;
-    const fs     = SAMPLE_STEP * 1.18;
-    const mx     = mouseRef.current.x;
-    const my     = mouseRef.current.y;
-    const css = getComputedStyle(document.documentElement);
-    const neonHex = css.getPropertyValue("--neon").trim() || "#3D2400";
-    const neonRgb = css.getPropertyValue("--neon-rgb").trim() || "61,36,0";
+    const { dpr, scale } = sizeRef.current;
+    const fs = SAMPLE_STEP * 1.18;
+    const mx = mouseRef.current.x;
+    const my = mouseRef.current.y;
+    const { neonHex } = colorsRef.current;
+    const particles = pRef.current;
+    const dt = Math.min(lastTimeRef.current ? (time - lastTimeRef.current) / 1000 : 0.016, 0.033);
+    lastTimeRef.current = time;
+    const dtScale = dt * 60;
 
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, width, height);
+    /* Physics and layout live in reference space; the transform scales it to fit. */
+    const renderScale = dpr * scale;
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+    ctx.clearRect(0, 0, REF_WIDTH, refHeightRef.current);
     ctx.imageSmoothingEnabled = false;
     ctx.font = `800 ${fs}px "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace`;
     ctx.textBaseline = "top";
+    ctx.shadowBlur = 0;
 
-    let moving = false;
+    let moving = hoverRef.current;
 
-    for (const p of pRef.current) {
-      /* Repulsion */
-      const dx   = p.x - mx;
-      const dy   = p.y - my;
-      const dist = Math.max(Math.sqrt(dx * dx + dy * dy), MIN_DIST);
-      if (dist < REPEL_RADIUS) {
+    for (const p of particles) {
+      const dx = p.x - mx;
+      const dy = p.y - my;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < REPEL_RADIUS_SQ) {
+        const dist = Math.max(Math.sqrt(distSq), MIN_DIST);
         const f = REPEL_FORCE / (dist * dist);
-        p.vx += (dx / dist) * f;
-        p.vy += (dy / dist) * f;
-        p.energy = Math.min(1, p.energy + 0.28);
+        p.vx += (dx / dist) * f * dtScale;
+        p.vy += (dy / dist) * f * dtScale;
+        p.energy = Math.min(1, p.energy + 0.28 * dtScale);
       }
 
-      /* Spring */
-      p.vx += (p.homeX - p.x) * SPRING_K;
-      p.vy += (p.homeY - p.y) * SPRING_K;
-      p.vx *= DAMPING;
-      p.vy *= DAMPING;
-      p.x  += p.vx;
-      p.y  += p.vy;
-      p.energy = Math.max(0, p.energy - 0.026);
+      p.vx += (p.homeX - p.x) * SPRING_K * dtScale;
+      p.vy += (p.homeY - p.y) * SPRING_K * dtScale;
+      p.vx *= Math.pow(DAMPING, dtScale);
+      p.vy *= Math.pow(DAMPING, dtScale);
+      p.x += p.vx;
+      p.y += p.vy;
+      p.energy = Math.max(0, p.energy - 0.026 * dtScale);
 
       const drift = Math.abs(p.homeX - p.x) + Math.abs(p.homeY - p.y);
-      if (drift > 0.4 || Math.abs(p.vx) > 0.08) moving = true;
-
-      const alpha = 0.58 + p.shade * 0.38 + p.energy * 0.16;
-
-      if (p.energy > 0.07) {
-        ctx.shadowColor = neonHex;
-        ctx.shadowBlur  = 4 + p.energy * 22;
-      } else {
-        ctx.shadowBlur = 0;
-      }
-
-      ctx.fillStyle = p.energy > 0.07
-        ? neonHex
-        : `rgba(${neonRgb},${Math.min(alpha, 1)})`;
-
-      ctx.fillText(p.energy > 0.18 ? pickGlyph(p.homeX, p.homeY, 1, true) : p.char, p.x, p.y);
+      if (drift > 0.15 || Math.abs(p.vx) > 0.03 || p.energy > 0.02) moving = true;
     }
 
+    /* Pass 1 — resting particles: no shadow state churn */
+    for (const p of particles) {
+      if (p.energy > ENERGY_GLOW) continue;
+      ctx.fillStyle = p.rgba;
+      ctx.fillText(p.char, p.x, p.y);
+    }
+
+    /* Pass 2 — active particles near cursor (small subset on dense titles) */
+    ctx.fillStyle = neonHex;
+    ctx.shadowColor = neonHex;
+    for (const p of particles) {
+      if (p.energy <= ENERGY_GLOW) continue;
+      ctx.shadowBlur = 4 + p.energy * 22;
+      ctx.fillText(p.energy > ENERGY_ACTIVE ? p.activeChar : p.char, p.x, p.y);
+    }
     ctx.shadowBlur = 0;
+
     if (moving) rafRef.current = requestAnimationFrame(tick);
-    else rafRef.current = null;
+    else {
+      rafRef.current = null;
+      lastTimeRef.current = null;
+    }
   }, []);
 
   const startAnim = useCallback(() => {
@@ -255,71 +297,98 @@ export function HeroAsciiCanvas({ lines = HERO_LINES, ariaLabel, className = "" 
   }, [tick]);
 
   const setup = useCallback(() => {
+    syncColors();
     const wrap   = wrapRef.current;
     const canvas = canvasRef.current;
     if (!wrap || !canvas) return;
     const cW = wrap.clientWidth;
     if (!cW) return;
 
-    const { particles, height } = buildParticles(cW, lines);
+    /* Build particles once per line-set at the reference width; resizes only rescale. */
+    if (!pRef.current.length || builtForLinesRef.current !== lines) {
+      const { particles, height } = buildParticles(REF_WIDTH, lines, colorsRef.current.neonRgb);
+      pRef.current = particles;
+      refHeightRef.current = height;
+      builtForLinesRef.current = lines;
+    }
+
+    const scale = cW / REF_WIDTH;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const cH = Math.ceil(height);
-    sizeRef.current = { width: cW, height: cH, dpr };
+    const cH = Math.ceil(refHeightRef.current * scale);
+    sizeRef.current = { width: cW, height: cH, dpr, scale };
     canvas.width  = Math.ceil(cW * dpr);
     canvas.height = Math.ceil(cH * dpr);
     canvas.style.height = `${cH}px`;
-    pRef.current  = particles;
+    lastTimeRef.current = null;
 
-    /* Draw initial state immediately */
     startAnim();
-  }, [lines, startAnim]);
+  }, [lines, startAnim, syncColors]);
 
   useEffect(() => {
     const wrap = wrapRef.current;
     if (!wrap) return;
-    setup();
 
-    /* Debounce via rAF — prevents "ResizeObserver loop" browser string-throw */
+    let cancelled = false;
+    const cancelIdle = scheduleIdleWork(() => {
+      if (!cancelled) setup();
+    }, 1200);
+
     let rafId = 0;
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(setup);
+      rafId = requestAnimationFrame(() => {
+        if (!cancelled) setup();
+      });
     });
     ro.observe(wrap);
 
-    /* Repaint immediately when the theme class changes (dark ↔ light).
-       Without this, resting particles keep the old colour until next interaction. */
-    const mo = new MutationObserver(() => startAnim());
+    const mo = new MutationObserver(() => {
+      syncColors();
+      startAnim();
+    });
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     return () => {
+      cancelled = true;
+      cancelIdle();
       ro.disconnect();
       mo.disconnect();
       cancelAnimationFrame(rafId);
       if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     };
-  }, [setup, startAnim]);
+  }, [setup, startAnim, syncColors]);
+
+  const onMouseEnter = useCallback(() => {
+    hoverRef.current = true;
+    startAnim();
+  }, [startAnim]);
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const scale = sizeRef.current.scale || 1;
+    mouseRef.current = {
+      x: (e.clientX - rect.left) / scale,
+      y: (e.clientY - rect.top) / scale,
+    };
+    hoverRef.current = true;
     startAnim();
   }, [startAnim]);
 
   const onMouseLeave = useCallback(() => {
+    hoverRef.current = false;
     mouseRef.current = { x: -9999, y: -9999 };
     startAnim();
   }, [startAnim]);
 
-  /* Initial render after mount (canvas won't paint without a frame) */
-  useEffect(() => { startAnim(); }, [startAnim]);
+  useEffect(() => scheduleIdleWork(() => startAnim(), 1200), [startAnim]);
 
   return (
     <div
       ref={wrapRef}
       className={`relative w-full ${className}`.trim()}
+      onMouseEnter={onMouseEnter}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
     >
@@ -327,7 +396,7 @@ export function HeroAsciiCanvas({ lines = HERO_LINES, ariaLabel, className = "" 
         ref={canvasRef}
         role="img"
         aria-label={ariaLabel ?? lines.map((line) => line.text).join(" ")}
-        style={{ display: "block", width: "100%" }}
+        style={{ display: "block", width: "100%", contain: "strict" }}
       />
     </div>
   );

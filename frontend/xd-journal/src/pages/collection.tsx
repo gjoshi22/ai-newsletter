@@ -1,14 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { AsciiCard } from "@/components/AsciiCard";
-import { CustomCursor } from "@/components/CustomCursor";
+import { DeferredCustomCursor } from "@/components/DeferredCustomCursor";
 import { HeroAsciiCanvas, type HeroAsciiLine } from "@/components/HeroAsciiCanvas";
-import { MascotGameLauncher } from "@/components/MascotGameLauncher";
-import { ModeGameToggle } from "@/components/ModeGameToggle";
+import { ModeFilterTabs } from "@/components/ModeFilterTabs";
 import { Navigation } from "@/components/Navigation";
-import { useSeenArticles } from "@/hooks/useSeenArticles";
-import { articles, type ArticleCategory, type ArticleSubCategory } from "@/lib/data";
+import { SiteFooter } from "@/components/SiteFooter";
+import { usePublishedArticles } from "@/hooks/usePublishedArticles";
+import type { ArticleCategory, ArticleSubCategory } from "@/lib/data";
 
 type CollectionPageProps = {
   category: ArticleCategory;
@@ -16,7 +16,12 @@ type CollectionPageProps = {
 
 const MASCOT_STORAGE_KEY = "xd-ai-journal-mascot-enabled-v1";
 
+const MascotGameLauncher = lazy(() =>
+  import("@/components/MascotGameLauncher").then((module) => ({ default: module.MascotGameLauncher })),
+);
+
 export default function CollectionPage({ category }: CollectionPageProps) {
+  const { data: articles = [] } = usePublishedArticles();
   const defaultFilter: ArticleSubCategory = category === "Resources" ? "Design" : "Development";
   const [activeFilter, setActiveFilter] = useState<ArticleSubCategory>(defaultFilter);
   const [mascotEnabled, setMascotEnabled] = useState(() => {
@@ -27,11 +32,9 @@ export default function CollectionPage({ category }: CollectionPageProps) {
       return false;
     }
   });
-  const { markSeen, isSeen } = useSeenArticles();
-
   const collection = useMemo(
     () => articles.filter((article) => article.category === category),
-    [category],
+    [articles, category],
   );
   const filtered = useMemo(
     () => collection.filter((article) => article.subCategory === activeFilter),
@@ -67,15 +70,17 @@ export default function CollectionPage({ category }: CollectionPageProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <CustomCursor />
+      <DeferredCustomCursor />
       <Navigation />
       {mascotEnabled && (
-        <MascotGameLauncher
-          category={category}
-          activeMode={activeFilter}
-          counts={counts}
-          onModeChange={setActiveFilter}
-        />
+        <Suspense fallback={null}>
+          <MascotGameLauncher
+            category={category}
+            activeMode={activeFilter}
+            counts={counts}
+            onModeChange={setActiveFilter}
+          />
+        </Suspense>
       )}
 
       <header className="collection-hero pt-12 border-b border-border">
@@ -104,6 +109,7 @@ export default function CollectionPage({ category }: CollectionPageProps) {
               <button
                 type="button"
                 className="mascot-preference-control"
+                data-mascot-avoid
                 role="switch"
                 aria-checked={mascotEnabled}
                 aria-label={`Turn mascot ${mascotEnabled ? "off" : "on"}`}
@@ -143,16 +149,13 @@ export default function CollectionPage({ category }: CollectionPageProps) {
       <main className="collection-main max-w-[1600px] mx-auto px-6 md:px-12">
         <div className="collection-toolbar">
           <div className="collection-toolbar-copy">
-            <p>{activeFilter} :: {filtered.length} articles</p>
-            <strong>{category === "News" ? "Filed signals" : "Reusable references"}</strong>
+            <strong>{filtered.length} articles</strong>
           </div>
           <div className="collection-toolbar-controls">
-            <ModeGameToggle
+            <ModeFilterTabs
               category={category}
               activeMode={activeFilter}
-              counts={counts}
               onModeChange={setActiveFilter}
-              showGame={false}
             />
           </div>
         </div>
@@ -171,8 +174,6 @@ export default function CollectionPage({ category }: CollectionPageProps) {
                 key={article.id}
                 article={article}
                 index={index}
-                isSeen={isSeen(article.id)}
-                onSeen={() => markSeen(article.id)}
               />
             ))}
           </motion.div>
@@ -184,6 +185,7 @@ export default function CollectionPage({ category }: CollectionPageProps) {
           </Link>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

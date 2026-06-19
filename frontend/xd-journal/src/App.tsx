@@ -2,16 +2,17 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { AnimatePresence } from "framer-motion";
-import { useState, useCallback, Component, type ReactNode } from "react";
+import { lazy, Suspense, useState, useCallback, Component, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Splash } from "@/components/Splash";
 import Home from "@/pages/home";
-import Archive from "@/pages/archive";
-import ArticlePage from "@/pages/article";
-import CollectionPage from "@/pages/collection";
-import AsciiNotepadPage from "@/pages/ascii-notepad";
-import NotFound from "@/pages/not-found";
+
+const Archive = lazy(() => import("@/pages/archive"));
+const ArticlePage = lazy(() => import("@/pages/article"));
+const CollectionPage = lazy(() => import("@/pages/collection"));
+const AsciiNotepadPage = lazy(() => import("@/pages/ascii-notepad"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient();
 const SPLASH_STORAGE_KEY = "xd-ai-journal-splash-seen-v1";
@@ -71,15 +72,17 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
 
 function AppRoutes() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/news">{() => <CollectionPage category="News" />}</Route>
-      <Route path="/resources">{() => <CollectionPage category="Resources" />}</Route>
-      <Route path="/archive" component={Archive} />
-      <Route path="/dispatch/:slug" component={ArticlePage} />
-      <Route path="/ascii-notepad" component={AsciiNotepadPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={null}>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/news">{() => <CollectionPage category="News" />}</Route>
+        <Route path="/resources">{() => <CollectionPage category="Resources" />}</Route>
+        <Route path="/archive" component={Archive} />
+        <Route path="/dispatch/:slug" component={ArticlePage} />
+        <Route path="/ascii-notepad" component={AsciiNotepadPage} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 

@@ -5,12 +5,17 @@
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm --filter @workspace/xd-journal build",
-    "typecheck": "pnpm --filter @workspace/xd-journal typecheck"
+    "typecheck": "pnpm --filter @workspace/xd-journal typecheck && pnpm --filter @workspace/api typecheck && pnpm --filter @workspace/admin typecheck && pnpm --filter @workspace/content typecheck",
+    "dev:api": "pnpm --filter @workspace/api dev",
+    "dev:admin": "pnpm --filter @workspace/admin dev",
+    "dev:journal": "pnpm --filter @workspace/xd-journal dev",
+    "db:migrate": "pnpm --filter @workspace/api db:migrate",
+    "db:seed": "pnpm --filter @workspace/api db:seed"
   },
   "private": true,
   "devDependencies": {
-    "@rollup/rollup-darwin-arm64": "4.59.0",
-    "lightningcss-darwin-arm64": "1.31.1",
+    "@rollup/rollup-win32-x64-msvc": "4.59.0",
+    "lightningcss-win32-x64-msvc": "1.31.1",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   },
